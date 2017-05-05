@@ -25,7 +25,7 @@ var util = require('util');
 var utils = require('fabric-client/lib/utils.js');
 var Peer = require('fabric-client/lib/Peer.js');
 
-var config = require('../config.json')
+var config = require('../../config.json')
 var helper = require('./helper.js');
 var logger = helper.getLogger('install-chaincode');
 

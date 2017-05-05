@@ -27,7 +27,7 @@ var user = null;
 var tx_id = null;
 var nonce = null;
 
-var config = require('../config.json')
+var config = require('../../config.json')
 var helper = require('./helper.js');
 var logger = helper.getLogger('Join-Channel');
 
@@ -35,7 +35,7 @@ var logger = helper.getLogger('Join-Channel');
 var ORGS = helper.ORGS;
 
 var allEventhubs = [];
-var _commonProto = grpc.load(path.join(__dirname, '../node_modules/fabric-client/lib/protos/common/common.proto')).common;
+var _commonProto = grpc.load(path.join(__dirname, '../../node_modules/fabric-client/lib/protos/common/common.proto')).common;
 //
 //Attempt to send a request to the orderer with the sendCreateChain method
 //

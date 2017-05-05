@@ -41,7 +41,7 @@ curl -s -X POST \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
 	"channelName":"mychannel",
-	"channelConfigPath":"../artifacts/channel/mychannel.tx"
+	"channelConfigPath":"../../artifacts/channel/mychannel.tx"
 }'
 echo
 echo

@@ -5,7 +5,7 @@
    "chaincodeId":"mycc",
    "channelName":"mychannel",
    "chaincodeVersion": "v0",
-   "GOPATH":"../artifacts",
+   "GOPATH":"../../artifacts",
    "chaincodePath":"github.com/example_cc",
    "keyValueStore":"/tmp/fabric-client-kvs",
    "orgsList": ["org1","org2"],

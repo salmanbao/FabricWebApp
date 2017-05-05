@@ -18,7 +18,7 @@ var util = require('util');
 var fs = require('fs');
 var path = require('path');
 
-var config = require('../config.json')
+var config = require('../../config.json')
 var helper = require('./helper.js');
 var logger = helper.getLogger('Create-Channel');
 
