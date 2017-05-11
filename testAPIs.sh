@@ -55,7 +55,7 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
-	"peers": ["localhost:7051","localhost:7056"]
+	"peers": ["peer0:7051","peer1:7051"]
 }'
 echo
 echo
@@ -69,7 +69,7 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG2_TOKEN" \
   -d '{
-	"peers": ["localhost:8051","localhost:8056"]
+	"peers": ["peer2:7051","peer3:7051"]
 }'
 echo
 echo
@@ -83,7 +83,7 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
-	"peers": ["localhost:7051","localhost:7056"],
+	"peers": ["peer0:7051","peer1:7051"],
 	"chaincodeName":"mycc",
 	"chaincodePath":"github.com/example_cc",
 	"chaincodeVersion":"v0"
@@ -101,7 +101,7 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG2_TOKEN" \
   -d '{
-	"peers": ["localhost:8051","localhost:8056"],
+	"peers": ["peer2:7051","peer3:7051"],
 	"chaincodeName":"mycc",
 	"chaincodePath":"github.com/example_cc",
 	"chaincodeVersion":"v0"
@@ -118,7 +118,7 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
-	"peers": ["localhost:7051"],
+	"peers": ["peer0:7051"],
 	"chaincodeName":"mycc",
 	"chaincodePath":"github.com/example_cc",
 	"chaincodeVersion":"v0",
@@ -136,7 +136,7 @@ TRX_ID=$(curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
-	"peers": ["localhost:7051"],
+	"peers": ["peer0:7051"],
 	"chaincodeVersion":"v0",
 	"functionName":"invoke",
 	"args":["move","a","b","10"]

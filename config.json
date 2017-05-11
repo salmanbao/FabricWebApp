@@ -1,5 +1,5 @@
 {
-   "host":"localhost",
+   "host":"webserver",
    "port":"4000",
    "jwt_expiretime": "3600",
    "chaincodeId":"mycc",
@@ -11,7 +11,7 @@
    "orgsList": ["org1","org2"],
    "eventWaitTime":"30000",
    "invokeQueryFcnName":"invoke",
-   "orderer":"grpcs://localhost:7050",
+   "orderer":"grpcs://orderer0:7050",
    "users":[
       {
          "username":"admin",
