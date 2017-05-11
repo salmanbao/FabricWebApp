@@ -90,8 +90,9 @@ The command
 make rm-state-volumes
 ```
 
-deletes the persistent storage of the web server, and can be used for example to reset the web server to a
-'clean' state, not having anything in the key/value store(s).  This can be executed only if the services are not up.
+deletes the persistent storage of the web server (in particular, the `artifacts_webserver_tmp` and `artifacts_webserver_homedir`
+volumes), and can be used for example to reset the web server to a 'clean' state, not having anything in the key/value store(s).
+This can be executed only if the services are not up.
 
 The command
 
@@ -99,8 +100,8 @@ The command
 make rm-node-modules
 ```
 
-deletes the node_modules directory of the web server (the directory in which the node.js dependencies of
-the web server are stored).  This can be executed only if the services are not up.
+deletes the node_modules directory of the web server (in particular, the `artifacts_webserver_homedir_node_modules` volume).
+This can be executed only if the services are not up.
 
 And finally,
 
