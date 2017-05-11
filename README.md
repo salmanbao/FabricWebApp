@@ -7,7 +7,7 @@ This is a fork of https://github.com/ratnakar-asara/Fabric_SampleWebApp
 Clone this repo with the following command.
 
 ```
-git clone https://github.com/vdods/Fabric_SampleWebApp
+git clone https://github.com/vdods/Fabric_SampleWebApp.git
 ```
 
 In one terminal, spin up the peer network, orderer, certificate authorities, and web server (which hosts the web app).
