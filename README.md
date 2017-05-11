@@ -42,8 +42,14 @@ The command
 make up
 ```
 
-spins up all services and prints all services' logs to the console.  Hitting Ctrl+C in this mode will stop all services.
-If any container exits, all will exit.
+creates and starts all services, volumes, and networks and prints all services' logs to the console.  Hitting Ctrl+C in this mode
+will stop all services.  If any container exits, all will exit.  There are three volumes:
+-   `artifacts_webserver_homedir` : Stores the home directory of the user that runs the web server.  In particular, this
+    stores the `~/.hfc-key-store` directory.
+-   `artifacts_webserver_homedir_node_modules` : Stores the `node_modules` directory for the web server.  This will really
+    only be populated once and won't need updating often, nor does it typically need to be deleted before restarting the
+    web server.
+-   `artifacts_webserver_tmp` : Stores the key/value store for each organization in the network.
 
 The command
 
