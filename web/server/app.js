@@ -36,6 +36,7 @@ var install = require('./install-chaincode.js');
 var instantiate = require('./instantiate-chaincode.js');
 var invoke = require('./invoke-transaction.js');
 var query = require('./query.js');
+var util = require('util');
 
 var host = process.env.HOST || config.host;
 var port = process.env.PORT || config.port;
@@ -96,8 +97,8 @@ app.post('/users', function(req, res) {
     var promise = helper.getRegisteredUsers(req.body.username, req.body.orgName, true);
     promise.then(function(response) {
         if (response && typeof response !== 'string') {
-					response.token = token;
-					res.json(response);
+                    response.token = token;
+                    res.json(response);
         } else {
             res.json({
                 success: false,
@@ -150,6 +151,13 @@ app.post('/channels/:channelName/peers', function(req, res) {
             var promise = join.joinChannel(req.params.channelName, req.body.peers, decoded.username, decoded.orgName);
             promise.then(function(message) {
                 res.send(message);
+            }, (err) => {
+                var error_message = util.format('join channel promise failed; error was: %j', err);
+                logger.info(error_message);
+                res.send({
+                    success: false,
+                    message: error_message
+                });
             });
         }
     });
