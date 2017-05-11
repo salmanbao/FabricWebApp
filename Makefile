@@ -7,7 +7,7 @@ up:
 
 # Bring up all services (and necessary volumes, networks, etc) in detached mode
 up-detached:
-	docker-compose -f artifacts/docker-compose.yaml up -d
+	docker-compose -f artifacts/docker-compose.yaml up -d --abort-on-container-exit
 
 # Follow the output of the logs
 logs-follow:
