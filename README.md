@@ -1,6 +1,6 @@
 # Hyperledger Fabric Example App using node.js SDK
 
-This is a fork of [github.com/ratnakar-asara/Fabric_SampleWebApp] and is based on the alpha version of Hyperledger Fabric.
+This is a fork of https://github.com/ratnakar-asara/Fabric_SampleWebApp
 
 ## Instructions
 
