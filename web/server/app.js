@@ -113,7 +113,7 @@ app.post('/channels', function(req, res) {
     logger.info('<<<<<<<<<<<<<<<<< C R E A T E  C H A N N E L >>>>>>>>>>>>>>>>>');
     logger.debug('End point : /channels');
     logger.debug('Channel name : ' + req.body.channelName);
-    logger.debug('channelConfigPath : ' + req.body.channelConfigPath); //../artifacts/channel/mychannel.tx
+    logger.debug('channelConfigPath : ' + req.body.channelConfigPath);
     var token = req.body.token || req.query.token || req.headers['x-access-token'];
     jwt.verify(token, app.get('secret'), function(err, decoded) {
         if (err) {

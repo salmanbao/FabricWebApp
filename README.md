@@ -33,7 +33,7 @@ The script should run to completion and exit without error (return code should b
 
 ## Finer-grained Instructions
 
-There are several `make` targets that make controlling the docker-compose services defined in `artifacts/docker-compose.yaml`
+There are several `make` targets that make controlling the docker-compose services defined in `docker-compose.yaml`
 easier.
 
 The command
@@ -44,12 +44,12 @@ make up
 
 creates and starts all services, volumes, and networks and prints all services' logs to the console.  Hitting Ctrl+C in this mode
 will stop all services.  If any container exits, all will exit.  There are three volumes:
--   `artifacts_webserver_homedir` : Stores the home directory of the user that runs the web server.  In particular, this
+-   `fabric_samplewebapp_webserver_homedir` : Stores the home directory of the user that runs the web server.  In particular, this
     stores the `~/.hfc-key-store` directory.
--   `artifacts_webserver_homedir_node_modules` : Stores the `node_modules` directory for the web server.  This will really
+-   `fabric_samplewebapp_webserver_homedir_node_modules` : Stores the `node_modules` directory for the web server.  This will really
     only be populated once and won't need updating often, nor does it typically need to be deleted before restarting the
     web server.
--   `artifacts_webserver_tmp` : Stores the key/value store for each organization in the network.
+-   `fabric_samplewebapp_webserver_tmp` : Stores the key/value store for each organization in the network.
 
 The command
 
@@ -90,9 +90,9 @@ The command
 make rm-state-volumes
 ```
 
-deletes the persistent storage of the web server (in particular, the `artifacts_webserver_tmp` and `artifacts_webserver_homedir`
-volumes), and can be used for example to reset the web server to a 'clean' state, not having anything in the key/value store(s).
-This can be executed only if the services are not up.
+deletes the persistent storage of the web server (in particular, the `fabric_samplewebapp_webserver_tmp` and
+`fabric_samplewebapp_webserver_homedir` volumes), and can be used for example to reset the web server to a 'clean'
+state, not having anything in the key/value store(s).  This can be executed only if the services are not up.
 
 The command
 
@@ -100,7 +100,7 @@ The command
 make rm-node-modules
 ```
 
-deletes the node_modules directory of the web server (in particular, the `artifacts_webserver_homedir_node_modules` volume).
+deletes the node_modules directory of the web server (in particular, the `fabric_samplewebapp_webserver_homedir_node_modules` volume).
 This can be executed only if the services are not up.
 
 And finally,
@@ -112,5 +112,5 @@ make down && make rm-state-volumes && make up
 is a convenient single command you can use after stopping services to reset all services back to a clean state
 and restart them, following the services' logs.  There is typically no need to delete `node_modules` because
 it is not likely to qualitatively change or be corrupted (though that does happen sometimes during development
-for various reasons).  Note that the web server service in `artifacts/docker-compose.yaml` does execute the
+for various reasons).  Note that the web server service in `docker-compose.yaml` does execute the
 command `npm install`, so any updates to `package.json` should automatically take effect.

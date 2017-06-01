@@ -5,13 +5,13 @@
    "chaincodeId":"mycc",
    "channelName":"mychannel",
    "chaincodeVersion": "v0",
-   "GOPATH":"../../artifacts",
+   "GOPATH":"../../generated-artifacts",
    "chaincodePath":"github.com/example_cc",
    "keyValueStore":"/tmp/fabric-client-kvs",
    "orgsList": ["org1","org2"],
    "eventWaitTime":"30000",
    "invokeQueryFcnName":"invoke",
-   "orderer":"grpcs://orderer0:7050",
+   "orderer":"grpcs://orderer.example.com:7050",
    "users":[
       {
          "username":"admin",

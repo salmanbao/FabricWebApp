@@ -1,7 +1,7 @@
 ---
 ################################################################################
 #
-#   Profile - meant to be used with docker-2orgs-2peerseach-e2e.yml
+#   Profile
 #
 #   - Different configuration profiles may be encoded here to be specified
 #   as parameters to the configtxgen tool
@@ -9,16 +9,23 @@
 ################################################################################
 Profiles:
 
-    TwoOrgs:
+    TwoOrgsOrdererGenesis:
         Orderer:
             <<: *OrdererDefaults
             Organizations:
                 - *OrdererOrg
-        Application: 
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *Org1
+                    - *Org2
+    TwoOrgsChannel:
+        Consortium: SampleConsortium
+        Application:
             <<: *ApplicationDefaults
             Organizations:
-                - *Org0
                 - *Org1
+                - *Org2
 
 ################################################################################
 #
@@ -35,17 +42,13 @@ Organizations:
     - &OrdererOrg
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
-        Name: OrdererMSP
+        Name: OrdererOrg
 
         # ID to load the MSP definition as
         ID: OrdererMSP
 
         # MSPDir is the filesystem path which contains the MSP configuration
-        #########################################################################
-        # FIXME: this path needs to be fixed to point to the actual location of #
-        # the project 'fabric-sdk-node' in the file system                      #
-        #########################################################################
-        MSPDir: /fabric-sdk-node/test/artifacts/channel/crypto-config/ordererOrganizations/ordererOrg1/msp
+        MSPDir: ../generated-artifacts/crypto-config/ordererOrganizations/example.com/msp
 
         # BCCSP (Blockchain crypto provider): Select which crypto implementation or
         # library to use
@@ -54,12 +57,12 @@ Organizations:
             SW:
                 Hash: SHA2
                 Security: 256
-                # Location of Key Store. If this is unset, a location will 
+                # Location of Key Store. If this is unset, a location will
                 # be chosen using 'MSPDir'/keystore
-                FileKeyStore: 
-                    KeyStore: 
-                
-    - &Org0
+                FileKeyStore:
+                    KeyStore:
+
+    - &Org1
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
         Name: Org1MSP
@@ -67,12 +70,7 @@ Organizations:
         # ID to load the MSP definition as
         ID: Org1MSP
 
-        # MSPDir is the filesystem path which contains the MSP configuration
-        #########################################################################
-        # FIXME: this path needs to be fixed to point to the actual location of #
-        # the project 'fabric-sdk-node' in the file system                      #
-        #########################################################################
-        MSPDir: /fabric-sdk-node/test/artifacts/channel/crypto-config/peerOrganizations/peerOrg1/msp/
+        MSPDir: ../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/msp
 
         # BCCSP (Blockchain crypto provider): Select which crypto implementation or
         # library to use
@@ -81,21 +79,19 @@ Organizations:
             SW:
                 Hash: SHA2
                 Security: 256
-                # Location of Key Store. If this is unset, a location will 
+                # Location of Key Store. If this is unset, a location will
                 # be chosen using 'MSPDir'/keystore
-                FileKeyStore: 
-                    KeyStore: 
-                
+                FileKeyStore:
+                    KeyStore:
+
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used
             # for cross org gossip communication.  Note, this value is only
             # encoded in the genesis block in the Application section context
-            - Host: peer0
+            - Host: peer0.org1.example.com
               Port: 7051
-            - Host: peer1
-              Port: 7056
 
-    - &Org1
+    - &Org2
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
         Name: Org2MSP
@@ -103,12 +99,7 @@ Organizations:
         # ID to load the MSP definition as
         ID: Org2MSP
 
-        # MSPDir is the filesystem path which contains the MSP configuration
-        #########################################################################
-        # FIXME: this path needs to be fixed to point to the actual location of #
-        # the project 'fabric-sdk-node' in the file system                      #
-        #########################################################################
-        MSPDir: /fabric-sdk-node/test/artifacts/channel/crypto-config/peerOrganizations/peerOrg2/msp/
+        MSPDir: ../generated-artifacts/crypto-config/peerOrganizations/org2.example.com/msp
 
         # BCCSP (Blockchain crypto provider): Select which crypto implementation or
         # library to use
@@ -117,19 +108,17 @@ Organizations:
             SW:
                 Hash: SHA2
                 Security: 256
-                # Location of Key Store. If this is unset, a location will 
+                # Location of Key Store. If this is unset, a location will
                 # be chosen using 'MSPDir'/keystore
-                FileKeyStore: 
-                    KeyStore: 
-                
+                FileKeyStore:
+                    KeyStore:
+
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used
             # for cross org gossip communication.  Note, this value is only
             # encoded in the genesis block in the Application section context
-            - Host: peer2
-              Port: 8051
-            - Host: peer3
-              Port: 8056
+            - Host: peer0.org2.example.com
+              Port: 7051
 
 ################################################################################
 #
@@ -146,10 +135,10 @@ Orderer: &OrdererDefaults
     OrdererType: solo
 
     Addresses:
-        - orderer0:7050
+        - orderer.example.com:7050
 
     # Batch Timeout: The amount of time to wait before creating a batch
-    BatchTimeout: 10s
+    BatchTimeout: 2s
 
     # Batch Size: Controls the number of messages batched into a block
     BatchSize:
@@ -170,7 +159,7 @@ Orderer: &OrdererDefaults
         # Brokers: A list of Kafka brokers to which the orderer connects
         # NOTE: Use IP:port notation
         Brokers:
-            - orderer0:9092
+            - 127.0.0.1:9092
 
     # Organizations is the list of orgs which are defined as participants on
     # the orderer side of the network

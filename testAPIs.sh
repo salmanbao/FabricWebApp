@@ -41,7 +41,7 @@ curl -s -X POST \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
 	"channelName":"mychannel",
-	"channelConfigPath":"../../artifacts/channel/mychannel.tx"
+	"channelConfigPath":"../../generated-artifacts/mychannel.tx"
 }'
 echo
 echo
@@ -55,7 +55,7 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
-	"peers": ["peer0:7051","peer1:7051"]
+	"peers": ["peer0.org1.example.com:7051","peer1.org1.example.com:7051"]
 }'
 echo
 echo
@@ -69,7 +69,7 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG2_TOKEN" \
   -d '{
-	"peers": ["peer2:7051","peer3:7051"]
+	"peers": ["peer0.org2.example.com:7051","peer1.org2.example.com:7051"]
 }'
 echo
 echo
@@ -83,7 +83,7 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
-	"peers": ["peer0:7051","peer1:7051"],
+	"peers": ["peer0.org1.example.com:7051","peer1.org1.example.com:7051"],
 	"chaincodeName":"mycc",
 	"chaincodePath":"github.com/example_cc",
 	"chaincodeVersion":"v0"
@@ -101,7 +101,7 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG2_TOKEN" \
   -d '{
-	"peers": ["peer2:7051","peer3:7051"],
+	"peers": ["peer0.org2.example.com:7051","peer1.org2.example.com:7051"],
 	"chaincodeName":"mycc",
 	"chaincodePath":"github.com/example_cc",
 	"chaincodeVersion":"v0"
@@ -118,7 +118,7 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
-	"peers": ["peer0:7051"],
+	"peers": ["peer0.org1.example.com:7051"],
 	"chaincodeName":"mycc",
 	"chaincodePath":"github.com/example_cc",
 	"chaincodeVersion":"v0",
@@ -136,7 +136,7 @@ TRX_ID=$(curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
-	"peers": ["peer0:7051"],
+	"peers": ["peer0.org1.example.com:7051"],
 	"chaincodeVersion":"v0",
 	"functionName":"invoke",
 	"args":["move","a","b","10"]
@@ -170,7 +170,8 @@ echo
 
 echo "GET query Transaction by TransactionID"
 echo
-curl -s -X GET http://localhost:4000/channels/mychannel/transactions/$TRX_ID?participatingPeer=peer1 \
+curl -s -X GET \
+  "http://localhost:4000/channels/mychannel/transactions/$TRX_ID?participatingPeer=peer1" \
   -H "authorization: Bearer $ORG1_TOKEN" \
   -H "cache-control: no-cache" \
   -H "content-type: application/json" \
