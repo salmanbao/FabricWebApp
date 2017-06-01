@@ -38,7 +38,7 @@ var chain1 = client1.newChain(config.channelName);
 var client2 = new hfc();
 var chain2 = client2.newChain(config.channelName);
 exports.client1 = client1;
-exports.client1 = client2;
+exports.client2 = client2;
 exports.chain1 = chain1;
 exports.chain2 = chain2;
 // need to enroll it with CA server
