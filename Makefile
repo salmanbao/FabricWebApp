@@ -30,7 +30,7 @@ up: all-generated-artifacts
 	docker-compose up --abort-on-container-exit
 
 # Bring up all services (and necessary volumes, networks, etc) in detached mode
-up-detached:
+up-detached: all-generated-artifacts
 	docker-compose up -d --abort-on-container-exit
 
 # Follow the output of the logs
