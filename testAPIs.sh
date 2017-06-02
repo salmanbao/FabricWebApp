@@ -8,7 +8,7 @@ if [ $? -ne 0 ]; then
 fi
 starttime=$(date +%s)
 
-echo "POST request Enroll on Org1  ..."
+echo "POST request Enroll on Org0  ..."
 echo
 ORG1_TOKEN=$(curl -s -X POST \
   http://localhost:4000/users \
@@ -19,7 +19,7 @@ echo $ORG1_TOKEN
 ORG1_TOKEN=$(echo $ORG1_TOKEN | jq ".token" | sed "s/\"//g")
 echo "ORG1 token is $ORG1_TOKEN"
 echo
-echo "POST request Enroll on Org2 ..."
+echo "POST request Enroll on Org1 ..."
 echo
 ORG2_TOKEN=$(curl -s -X POST \
   http://localhost:4000/users \
@@ -46,7 +46,7 @@ curl -s -X POST \
 echo
 echo
 
-echo "POST request Join channel on Org1"
+echo "POST request Join channel on Org0"
 echo
 curl -s -X POST \
   http://localhost:4000/channels/mychannel/peers \
@@ -55,12 +55,12 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
-	"peers": ["peer0.org1.example.com:7051","peer1.org1.example.com:7051"]
+	"peers": ["peer0.org0.example.com:7051","peer1.org0.example.com:7051"]
 }'
 echo
 echo
 
-echo "POST request Join channel on Org2"
+echo "POST request Join channel on Org1"
 echo
 curl -s -X POST \
   http://localhost:4000/channels/mychannel/peers \
@@ -69,12 +69,12 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG2_TOKEN" \
   -d '{
-	"peers": ["peer0.org2.example.com:7051","peer1.org2.example.com:7051"]
+	"peers": ["peer0.org1.example.com:7051","peer1.org1.example.com:7051"]
 }'
 echo
 echo
 
-echo "POST Install chaincode on Org1"
+echo "POST Install chaincode on Org0"
 echo
 curl -s -X POST \
   http://localhost:4000/chaincodes \
@@ -82,6 +82,24 @@ curl -s -X POST \
   -H "cache-control: no-cache" \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
+  -d '{
+	"peers": ["peer0.org0.example.com:7051","peer1.org0.example.com:7051"],
+	"chaincodeName":"mycc",
+	"chaincodePath":"github.com/example_cc",
+	"chaincodeVersion":"v0"
+}'
+echo
+echo
+
+
+echo "POST Install chaincode on Org1"
+echo
+curl -s -X POST \
+  http://localhost:4000/chaincodes \
+  -H "authorization: Bearer $ORG2_TOKEN" \
+  -H "cache-control: no-cache" \
+  -H "content-type: application/json" \
+  -H "x-access-token: $ORG2_TOKEN" \
   -d '{
 	"peers": ["peer0.org1.example.com:7051","peer1.org1.example.com:7051"],
 	"chaincodeName":"mycc",
@@ -91,25 +109,7 @@ curl -s -X POST \
 echo
 echo
 
-
-echo "POST Install chaincode on Org2"
-echo
-curl -s -X POST \
-  http://localhost:4000/chaincodes \
-  -H "authorization: Bearer $ORG2_TOKEN" \
-  -H "cache-control: no-cache" \
-  -H "content-type: application/json" \
-  -H "x-access-token: $ORG2_TOKEN" \
-  -d '{
-	"peers": ["peer0.org2.example.com:7051","peer1.org2.example.com:7051"],
-	"chaincodeName":"mycc",
-	"chaincodePath":"github.com/example_cc",
-	"chaincodeVersion":"v0"
-}'
-echo
-echo
-
-echo "POST instantiate chaincode on peer1 of Org1"
+echo "POST instantiate chaincode on peer1 of Org0"
 echo
 curl -s -X POST \
   http://localhost:4000/channels/mychannel/chaincodes \
@@ -118,7 +118,7 @@ curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
-	"peers": ["peer0.org1.example.com:7051"],
+	"peers": ["peer0.org0.example.com:7051"],
 	"chaincodeName":"mycc",
 	"chaincodePath":"github.com/example_cc",
 	"chaincodeVersion":"v0",
@@ -127,7 +127,7 @@ curl -s -X POST \
 }'
 echo
 echo
-echo "POST invoke chaincode on peer1 of Org1"
+echo "POST invoke chaincode on peer1 of Org0"
 echo
 TRX_ID=$(curl -s -X POST \
   http://localhost:4000/channels/mychannel/chaincodes/mycc \
@@ -136,7 +136,7 @@ TRX_ID=$(curl -s -X POST \
   -H "content-type: application/json" \
   -H "x-access-token: $ORG1_TOKEN" \
   -d '{
-	"peers": ["peer0.org1.example.com:7051"],
+	"peers": ["peer0.org0.example.com:7051"],
 	"chaincodeVersion":"v0",
 	"functionName":"invoke",
 	"args":["move","a","b","10"]
@@ -145,7 +145,7 @@ echo "Transacton ID is $TRX_ID"
 echo
 echo
 
-echo "GET query chaincode on peer1 of Org1"
+echo "GET query chaincode on peer1 of Org0"
 echo
 curl -s -X GET \
   "http://localhost:4000/channels/mychannel/chaincodes/mycc?peer=peer1&args=%5B%22query%22%2C%22a%22%5D&chaincodeVersion=v0" \

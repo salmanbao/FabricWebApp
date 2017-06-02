@@ -1,17 +1,14 @@
 {
    "host":"webserver",
    "port":"4000",
-   "jwt_expiretime": "3600",
    "chaincodeId":"mycc",
    "channelName":"mychannel",
    "chaincodeVersion": "v0",
    "GOPATH":"../../generated-artifacts",
    "chaincodePath":"github.com/example_cc",
-   "keyValueStore":"/tmp/fabric-client-kvs",
-   "orgsList": ["org1","org2"],
+   "kvs_path_prefix":"/tmp/kvs/",
    "eventWaitTime":"30000",
    "invokeQueryFcnName":"invoke",
-   "orderer":"grpcs://orderer.example.com:7050",
    "users":[
       {
          "username":"admin",

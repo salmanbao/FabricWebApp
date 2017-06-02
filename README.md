@@ -126,12 +126,12 @@ easier.
         --ca.keyfile `ls -1 /etc/hyperledger/fabric-ca-server-config/*_sk`
 
     in the command to start each CA service.  If there is more than one file in that directory matching the `*_sk` pattern,
-    then this will cause the CA (in this case, `ca.org2.example.com`) to stop with error
+    then this will cause the CA (in this case, `ca.org1.example.com`) to stop with error
 
-        ca.org2.example.com       | 2017/06/01 19:31:53 [INFO] Created default configuration file at /etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml
-        ca.org2.example.com       | Error: Usage: too many arguments.
-        ca.org2.example.com       | Usage:
-        ca.org2.example.com       |   fabric-ca-server start [flags]
+        ca.org1.example.com       | 2017/06/01 19:31:53 [INFO] Created default configuration file at /etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml
+        ca.org1.example.com       | Error: Usage: too many arguments.
+        ca.org1.example.com       | Usage:
+        ca.org1.example.com       |   fabric-ca-server start [flags]
 
     This can occur if for some reason the cryptographic materials are generated (via rules in Makefile) more than once.
     The solution is to delete the cryptographic materials so they can be regenerated from scratch.  This can be done

@@ -7,6 +7,23 @@ volumes:
 
 services:
 
+  ca.org0.example.com:
+    container_name: ca.org0.example.com
+    image: hyperledger/fabric-ca:x86_64-1.0.0-alpha2
+    environment:
+      # TODO: change to /var/hyperledger
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+    # The `ls -1 .../*_sk` command is a hack in order to get the randomly generated filename in which
+    # the private key is stored.  Not sure why the filename is random.  Maybe this is a security feature.
+    command: sh -c 'fabric-ca-server start --ca.certfile /etc/hyperledger/fabric-ca-server-config/ca.org0.example.com-cert.pem --ca.keyfile `ls -1 /etc/hyperledger/fabric-ca-server-config/*_sk` -b admin:adminpw -d'
+    volumes:
+      - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/:/etc/hyperledger/fabric-ca-server-config:ro
+      # TODO: create persistent volume to be mounted at /etc/hyperledger/fabric-ca-server
+      # QUESTION: should this be /var/hyperledger/fabric-ca-server, since its contents are likely to vary?
+    # This is not necessary -- just a little self-documenting hint that this service is being offered on port 7054
+    ports:
+      - 7054:7054
+
   ca.org1.example.com:
     container_name: ca.org1.example.com
     image: hyperledger/fabric-ca:x86_64-1.0.0-alpha2
@@ -20,27 +37,10 @@ services:
       - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server-config:ro
       # TODO: create persistent volume to be mounted at /etc/hyperledger/fabric-ca-server
       # QUESTION: should this be /var/hyperledger/fabric-ca-server, since its contents are likely to vary?
-    # This is not necessary -- just a little self-documenting hint that this service is being offered on port 7054
-    ports:
-      - 7054:7054
-
-  ca.org2.example.com:
-    container_name: ca.org2.example.com
-    image: hyperledger/fabric-ca:x86_64-1.0.0-alpha2
-    environment:
-      # TODO: change to /var/hyperledger
-      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
-    # The `ls -1 .../*_sk` command is a hack in order to get the randomly generated filename in which
-    # the private key is stored.  Not sure why the filename is random.  Maybe this is a security feature.
-    command: sh -c 'fabric-ca-server start --ca.certfile /etc/hyperledger/fabric-ca-server-config/ca.org2.example.com-cert.pem --ca.keyfile `ls -1 /etc/hyperledger/fabric-ca-server-config/*_sk` -b admin:adminpw -d'
-    volumes:
-      - ./generated-artifacts/crypto-config/peerOrganizations/org2.example.com/ca/:/etc/hyperledger/fabric-ca-server-config:ro
-      # TODO: create persistent volume to be mounted at /etc/hyperledger/fabric-ca-server
-      # QUESTION: should this be /var/hyperledger/fabric-ca-server, since its contents are likely to vary?
     # This is really only necessary if you want to access this service from the host.
     # Configurations within these docker-compose services should just use the native port 7054 (since
     # each service has its own IP address).  In particular, within the docker services, this
-    # service is available on address ca.org2.example.com:7054
+    # service is available on address ca.org1.example.com:7054
     ports:
       - 8054:7054
 
@@ -75,6 +75,48 @@ services:
     ports:
       - 7050:7050
 
+  peer0.org0.example.com:
+    container_name: peer0.org0.example.com
+    extends:
+      file: source-artifacts/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0.org0.example.com
+      - CORE_PEER_ADDRESS=peer0.org0.example.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org0.example.com:7051
+      - CORE_PEER_LOCALMSPID=Org0MSP
+      # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
+    volumes:
+        - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/msp:/etc/hyperledger/fabric/msp:rw
+        - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/tls:/etc/hyperledger/fabric/tls:ro
+    ports:
+      - 7051:7051
+      - 7053:7053
+
+  peer1.org0.example.com:
+    container_name: peer1.org0.example.com
+    extends:
+      file: source-artifacts/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer1.org0.example.com
+      - CORE_PEER_ADDRESS=peer1.org0.example.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org0.example.com:7051
+      - CORE_PEER_LOCALMSPID=Org0MSP
+      # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
+    volumes:
+        - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/msp:/etc/hyperledger/fabric/msp:rw
+        - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/tls:/etc/hyperledger/fabric/tls:ro
+    # This is really only necessary if you want to access this service from the host.
+    # Configurations within these docker-compose services should just use the native ports (since
+    # each service has its own IP address).  In particular, within the docker services, this
+    # service is available on address peer1.org0.example.com:7051 (and 7053)
+    ports:
+      - 7056:7051
+      - 7058:7053
+
   peer0.org1.example.com:
     container_name: peer0.org1.example.com
     extends:
@@ -90,9 +132,13 @@ services:
     volumes:
         - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp:rw
         - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls:ro
+    # This is really only necessary if you want to access this service from the host.
+    # Configurations within these docker-compose services should just use the native ports (since
+    # each service has its own IP address).  In particular, within the docker services, this
+    # service is available on address peer0.org1.example.com:7051 (and 7053)
     ports:
-      - 7051:7051
-      - 7053:7053
+      - 8051:7051
+      - 8053:7053
 
   peer1.org1.example.com:
     container_name: peer1.org1.example.com
@@ -113,52 +159,6 @@ services:
     # Configurations within these docker-compose services should just use the native ports (since
     # each service has its own IP address).  In particular, within the docker services, this
     # service is available on address peer1.org1.example.com:7051 (and 7053)
-    ports:
-      - 7056:7051
-      - 7058:7053
-
-  peer0.org2.example.com:
-    container_name: peer0.org2.example.com
-    extends:
-      file: source-artifacts/peer-base.yaml
-      service: peer-base
-    environment:
-      - CORE_PEER_ID=peer0.org2.example.com
-      - CORE_PEER_ADDRESS=peer0.org2.example.com:7051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org2.example.com:7051
-      - CORE_PEER_LOCALMSPID=Org2MSP
-      # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
-      # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
-    volumes:
-        - ./generated-artifacts/crypto-config/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp:/etc/hyperledger/fabric/msp:rw
-        - ./generated-artifacts/crypto-config/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls:/etc/hyperledger/fabric/tls:ro
-    # This is really only necessary if you want to access this service from the host.
-    # Configurations within these docker-compose services should just use the native ports (since
-    # each service has its own IP address).  In particular, within the docker services, this
-    # service is available on address peer0.org2.example.com:7051 (and 7053)
-    ports:
-      - 8051:7051
-      - 8053:7053
-
-  peer1.org2.example.com:
-    container_name: peer1.org2.example.com
-    extends:
-      file: source-artifacts/peer-base.yaml
-      service: peer-base
-    environment:
-      - CORE_PEER_ID=peer1.org2.example.com
-      - CORE_PEER_ADDRESS=peer1.org2.example.com:7051
-      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org2.example.com:7051
-      - CORE_PEER_LOCALMSPID=Org2MSP
-      # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
-      # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
-    volumes:
-        - ./generated-artifacts/crypto-config/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/msp:/etc/hyperledger/fabric/msp:rw
-        - ./generated-artifacts/crypto-config/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/tls:/etc/hyperledger/fabric/tls:ro
-    # This is really only necessary if you want to access this service from the host.
-    # Configurations within these docker-compose services should just use the native ports (since
-    # each service has its own IP address).  In particular, within the docker services, this
-    # service is available on address peer1.org2.example.com:7051 (and 7053)
     ports:
       - 8056:7051
       - 8058:7053
@@ -185,13 +185,13 @@ services:
         cd Fabric_SampleWebApp && \
         npm start
       "
+        # nmap ca.org0.example.com -p 20-10000 && \
         # nmap ca.org1.example.com -p 20-10000 && \
-        # nmap ca.org2.example.com -p 20-10000 && \
         # nmap orderer.example.com -p 20-10000 && \
+        # nmap peer0.org0.example.com -p 20-10000 && \
+        # nmap peer1.org0.example.com -p 20-10000 && \
         # nmap peer0.org1.example.com -p 20-10000 && \
         # nmap peer1.org1.example.com -p 20-10000 && \
-        # nmap peer0.org2.example.com -p 20-10000 && \
-        # nmap peer1.org2.example.com -p 20-10000 && \
     ports:
       - 4000:4000
     volumes:
@@ -204,13 +204,13 @@ services:
       # Mount this project's files
       - .:/home/minion/Fabric_SampleWebApp:ro
     depends_on:
+      - ca.org0.example.com
       - ca.org1.example.com
-      - ca.org2.example.com
       - orderer.example.com
+      - peer0.org0.example.com
+      - peer1.org0.example.com
       - peer0.org1.example.com
       - peer1.org1.example.com
-      - peer0.org2.example.com
-      - peer1.org2.example.com
 
   # channel_creator:
   #   container_name: channel_creator
@@ -221,19 +221,19 @@ services:
   #     - /var/run/:/host/var/run/
   #     # Mount this project's files
   #     - .:/Fabric_SampleWebApp:ro
-  #     - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp:ro
-  #     - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls:ro
+  #     - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/msp:/etc/hyperledger/fabric/msp:ro
+  #     - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/tls:/etc/hyperledger/fabric/tls:ro
   #   working_dir: /Fabric_SampleWebApp
   #   command: |
   #     bash -x -c "
   #       peer channel create -o orderer.example.com:7050 -c mychannel -f generated-artifacts/mychannel.tx --tls --cafile generated-artifacts/crypto-config/ordererOrganizations/example.com/ca/ca.example.com-cert.pem && \
-  #       CORE_PEER_ADDRESS=peer0.org1.example.com:7051 peer channel join -b generated-artifacts/orderer.genesis.block && \
-  #       CORE_PEER_ADDRESS=peer1.org1.example.com:7051 peer channel join -b generated-artifacts/orderer.genesis.block
+  #       CORE_PEER_ADDRESS=peer0.org0.example.com:7051 peer channel join -b generated-artifacts/orderer.genesis.block && \
+  #       CORE_PEER_ADDRESS=peer1.org0.example.com:7051 peer channel join -b generated-artifacts/orderer.genesis.block
   #     "
   #   depends_on:
   #     - orderer.example.com
-  #     - peer0.org1.example.com
-  #     - peer1.org1.example.com
+  #     - peer0.org0.example.com
+  #     - peer1.org0.example.com
 
   #test:
     #container_name: test
@@ -254,13 +254,13 @@ services:
         #node --trace-warnings client checkbalance partyA && \
         #node --trace-warnings client checkbalance partyB
       #"
+        ## nmap ca.org0.example.com -p 20-10000 && \
         ## nmap ca.org1.example.com -p 20-10000 && \
-        ## nmap ca.org2.example.com -p 20-10000 && \
         ## nmap orderer.example.com -p 20-10000 && \
+        ## nmap peer0.org0.example.com -p 20-10000 && \
+        ## nmap peer1.org0.example.com -p 20-10000 && \
         ## nmap peer0.org1.example.com -p 20-10000 && \
         ## nmap peer1.org1.example.com -p 20-10000 && \
-        ## nmap peer0.org2.example.com -p 20-10000 && \
-        ## nmap peer1.org2.example.com -p 20-10000 && \
     #ports:
       #- 4000:4000
     #volumes:
@@ -273,12 +273,12 @@ services:
       ## Mount this project's files
       #- .:/home/minion/Fabric_SampleWebApp:ro
     #depends_on:
+      #- ca.org0.example.com
       #- ca.org1.example.com
-      #- ca.org2.example.com
       #- orderer.example.com
+      #- peer0.org0.example.com
+      #- peer1.org0.example.com
       #- peer0.org1.example.com
       #- peer1.org1.example.com
-      #- peer0.org2.example.com
-      #- peer1.org2.example.com
 
 
