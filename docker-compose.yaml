@@ -62,7 +62,8 @@ services:
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/orderer/msp
 
-      - ORDERER_GENERAL_TLS_ENABLED=true
+      #- ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_ENABLED=false
       - ORDERER_GENERAL_TLS_PRIVATEKEY=/etc/hyperledger/orderer/tls/server.key
       - ORDERER_GENERAL_TLS_CERTIFICATE=/etc/hyperledger/orderer/tls/server.crt
       - ORDERER_GENERAL_TLS_ROOTCAS=[/etc/hyperledger/orderer/tls/ca.crt]
@@ -70,6 +71,9 @@ services:
     command: orderer
     volumes:
       - ./generated-artifacts/orderer.genesis.block:/etc/hyperledger/configtx/orderer.genesis.block:ro
+      # TODO: Try to make this read-only, and then combine the two mount directives?
+      # The msp and tls subdirs are the only subdirs, so one mount directive would
+      # be equivalent as long as read-only is ok for msp.
       - ./generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/etc/hyperledger/orderer/msp:rw
       - ./generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/etc/hyperledger/orderer/tls:ro
     ports:
@@ -88,8 +92,8 @@ services:
       # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
     volumes:
-        - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/msp:/etc/hyperledger/fabric/msp:rw
-        - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/tls:/etc/hyperledger/fabric/tls:ro
+      - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/msp:/etc/hyperledger/fabric/msp:rw
+      - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/tls:/etc/hyperledger/fabric/tls:ro
     ports:
       - 7051:7051
       - 7053:7053
@@ -107,8 +111,8 @@ services:
       # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
     volumes:
-        - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/msp:/etc/hyperledger/fabric/msp:rw
-        - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/tls:/etc/hyperledger/fabric/tls:ro
+      - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/msp:/etc/hyperledger/fabric/msp:rw
+      - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/tls:/etc/hyperledger/fabric/tls:ro
     # This is really only necessary if you want to access this service from the host.
     # Configurations within these docker-compose services should just use the native ports (since
     # each service has its own IP address).  In particular, within the docker services, this
@@ -130,8 +134,8 @@ services:
       # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
     volumes:
-        - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp:rw
-        - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls:ro
+      - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp:rw
+      - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls:ro
     # This is really only necessary if you want to access this service from the host.
     # Configurations within these docker-compose services should just use the native ports (since
     # each service has its own IP address).  In particular, within the docker services, this
@@ -153,8 +157,8 @@ services:
       # - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       # - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
     volumes:
-        - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/msp:/etc/hyperledger/fabric/msp:rw
-        - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls:/etc/hyperledger/fabric/tls:ro
+      - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/msp:/etc/hyperledger/fabric/msp:rw
+      - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls:/etc/hyperledger/fabric/tls:ro
     # This is really only necessary if you want to access this service from the host.
     # Configurations within these docker-compose services should just use the native ports (since
     # each service has its own IP address).  In particular, within the docker services, this
@@ -178,6 +182,8 @@ services:
       context: .
       dockerfile: source-artifacts/webserver-env:v0.0.Dockerfile
     working_dir: /home/minion
+    environment:
+      - 'HFC_LOGGING={"debug":"console"}'
     command: |
       bash -x -c "
         cp Fabric_SampleWebApp/package.json . && \

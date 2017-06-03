@@ -143,4 +143,6 @@ easier.
     will generate them automatically.  However, they can be generated via the command
 
         make all-generated-artifacts
-
+-   TODO: Make a separate directory of artifacts for use by the web server.  There should be a very clear
+    demarcation between the artifacts directories for each logical server (e.g. peer, orderer, ca, webserver).
+-   TODO: Get orderer TLS working.  Currently it fails within the grpc node module in the Orderer.sendBroadcast call.

@@ -1,8 +1,9 @@
 {
     "orderer": {
-        "url": "grpcs://orderer.example.com:7050",
-        "server_hostname": "orderer.example.com",
-        "tls_cacerts_path": "../../generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt"
+        "__url": "grpcs://orderer.example.com:7050",
+        "url": "grpc://orderer.example.com:7050",
+        "ssl_target_name_override": "orderer.example.com",
+        "orderer_tls_cacerts_path": "../../generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt"
     },
     "organizations": {
         "org0": {
@@ -10,25 +11,36 @@
             "mspid": "Org0MSP",
             "ca": {
                 "url": "http://ca.org0.example.com:7054",
-                "tlsOptions": null,
+                "tlsOptions": {
+                    "trustedRoots": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/ca.org0.example.com-cert.pem",
+                    "verify": true
+                },
                 "caname": null,
-                "admin_account": {
-                    "enrollmentID": "admin",
-                    "enrollmentSecret": "adminpw"
-                }
+                "admin_username": "admin-org0"
             },
             "peers": {
                 "peer0": {
                     "requests": "grpcs://peer0.org0.example.com:7051",
                     "events": "grpcs://peer0.org0.example.com:7053",
-                    "server_hostname": "peer0.org0.example.com",
-                    "tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/tls/ca.crt"
+                    "ssl_target_name_override": "peer0.org0.example.com",
+                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/tls/ca.crt"
                 },
                 "peer1": {
                     "requests": "grpcs://peer1.org0.example.com:7051",
                     "events": "grpcs://peer1.org0.example.com:7053",
-                    "server_hostname": "peer1.org0.example.com",
-                    "tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/tls/ca.crt"
+                    "ssl_target_name_override": "peer1.org0.example.com",
+                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/tls/ca.crt"
+                }
+            },
+            "users": {
+                "__comment": "this probably belongs in a different place",
+                "Admin": {
+                    "tls_cert_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/Admin@org0.example.com/tls/server.crt",
+                    "tls_key_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/Admin@org0.example.com/tls/server.key"
+                },
+                "User1": {
+                    "tls_cert_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/User1@org0.example.com/tls/server.crt",
+                    "tls_key_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/User1@org0.example.com/tls/server.key"
                 }
             }
         },
@@ -37,25 +49,36 @@
             "mspid": "Org1MSP",
             "ca": {
                 "url": "http://ca.org1.example.com:7054",
-                "tlsOptions": null,
+                "tlsOptions": {
+                    "trustedRoots": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem",
+                    "verify": true
+                },
                 "caname": null,
-                "admin_account": {
-                    "enrollmentID": "admin",
-                    "enrollmentSecret": "adminpw"
-                }
+                "admin_username": "admin-org1"
             },
             "peers": {
                 "peer0": {
                     "requests": "grpcs://peer0.org1.example.com:7051",
                     "events": "grpcs://peer0.org1.example.com:7053",
-                    "server_hostname": "peer0.org1.example.com",
-                    "tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+                    "ssl_target_name_override": "peer0.org1.example.com",
+                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
                 },
                 "peer1": {
                     "requests": "grpcs://peer1.org1.example.com:7051",
                     "events": "grpcs://peer1.org1.example.com:7053",
-                    "server_hostname": "peer1.org1.example.com",
-                    "tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls/ca.crt"
+                    "ssl_target_name_override": "peer1.org1.example.com",
+                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls/ca.crt"
+                }
+            },
+            "users": {
+                "__comment": "this probably belongs in a different place",
+                "Admin": {
+                    "tls_cert_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/server.crt",
+                    "tls_key_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/server.key"
+                },
+                "User1": {
+                    "tls_cert_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com/tls/server.crt",
+                    "tls_key_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com/tls/server.key"
                 }
             }
         }

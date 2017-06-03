@@ -7,13 +7,11 @@ var bodyParser = require('body-parser');
 var cors = require('cors');
 var FabricCAServices = require('fabric-ca-client');
 var FabricClient = require('fabric-client');
+var FabricClientUtils = require('fabric-client/lib/utils.js');
 var fs = require('fs');
 var http = require('http');
-var Orderer = require('fabric-client/lib/Orderer.js');
 var path = require('path');
-var Peer = require('fabric-client/lib/Peer.js');
 var winston = require('winston');
-var User = require('fabric-client/lib/User.js');
 var util = require('util');
 
 function assert (condition, message) {
@@ -26,15 +24,19 @@ function assert (condition, message) {
     }
 }
 
+function sleep (milliseconds) {
+    return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// SET CONFIGURATONS ////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 app.options('*', cors());
 app.use(cors());
-//support parsing of application/json type post data
+// Support parsing of application/json type post data
 app.use(bodyParser.json());
-//support parsing of application/x-www-form-urlencoded post data
+// Support parsing of application/x-www-form-urlencoded post data
 app.use(bodyParser.urlencoded({
     extended: false
 }));
@@ -47,6 +49,7 @@ var logger = new(winston.Logger)({
     ]
 });
 
+// Make node do something more reasonable with this type of error.
 process.on('unhandledRejection', (r) => logger.error(r));
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -64,21 +67,25 @@ class SimpleClient {
 
         // Set up the orderer.
         {
-            let tls_cacerts = fs.readFileSync(path.join(__dirname, this.netcfg.orderer.tls_cacerts_path));
-            this.orderer    = new Orderer(
+            let orderer_tls_cacerts = fs.readFileSync(path.join(__dirname, this.netcfg.orderer.orderer_tls_cacerts_path));
+            let client = new FabricClient(); // This client is only used to create the Orderer.
+            this.orderer = client.newOrderer(
                 this.netcfg.orderer.url,
                 {
-                    'pem'                     : Buffer.from(tls_cacerts).toString(),
-                    'ssl-target-name-override': this.netcfg.orderer.server_hostname
+                    // NOTE: this may or may not currently be necessary, as orderer TLS is currently disabled in this app
+                    // because I haven't been able to get it working.
+                    'pem'                     : Buffer.from(orderer_tls_cacerts).toString(),
+                    'ssl-target-name-override': this.netcfg.orderer.ssl_target_name_override
                 }
             );
         }
 
         // Create a client, chain, and CA for each organization.
-        this.client_for_org = {}
-        this.chain_for_org  = {}
-        this.ca_for_org     = {}
-        this.kvs_for_org    = {}
+        this.org_names      = [];
+        this.client_for_org = {};
+        this.chain_for_org  = {};
+        this.ca_for_org     = {};
+        this.kvs_for_org    = {};
         for (let org_name in this.netcfg.organizations) {
             let org_cfg = this.netcfg.organizations[org_name];
             let client = new FabricClient();
@@ -90,13 +97,13 @@ class SimpleClient {
 
             // Set up the peers for each chain
             for (let peername in this.netcfg.peers) {
-                let peer_cfg    = this.netcfg.peers[peername];
-                let tls_cacerts = fs.readFileSync(path.join(__dirname, peer_cfg.tls_cacerts_path));
-                let peer        = new Peer(
-                    'grpcs://' + peer_cfg.requests,
+                let peer_cfg         = this.netcfg.peers[peername];
+                let peer_tls_cacerts = fs.readFileSync(path.join(__dirname, peer_cfg.peer_tls_cacerts_path));
+                let peer        = client.newPeer(
+                    peer_cfg.requests,
                     {
-                        'pem'                     : Buffer.from(tls_cacerts).toString(),
-                        'ssl-target-name-override': peer_cfg.server_hostname
+                        'pem'                     : Buffer.from(peer_tls_cacerts).toString(),
+                        'ssl-target-name-override': peer_cfg.ssl_target_name_override
                     }
                 );
                 chain.addPeer(peer);
@@ -105,15 +112,20 @@ class SimpleClient {
             // Set up the CA for each org.
             {
                 let ca_cfg = org_cfg.ca;
+                let cryptoSuite_path = this.appcfg.cryptoSuite_path_prefix + org_name;
+                let cryptoSuite = client.newCryptoSuite({
+                    path: cryptoSuite_path
+                });
                 ca = new FabricCAServices(
                     ca_cfg.url,
                     ca_cfg.tlsOptions,
                     ca_cfg.caname,
-                    null                // cryptoSuite
+                    cryptoSuite
                 );
             }
 
             // Store everything in the correct places in this object.
+            this.org_names.push(org_name);
             this.client_for_org[org_name] = client;
             this.chain_for_org[org_name]  = chain;
             this.ca_for_org[org_name]     = ca;
@@ -121,7 +133,7 @@ class SimpleClient {
         }
     }
 
-    // Returns a promise for creation of kvss for all organizations.
+    // Returns a promise for creation of a kvs for each organization.
     create_kvs_for_each_org__p () {
         logger.debug('create_kvs_for_each_org__p();');
         let promises = [];
@@ -149,26 +161,62 @@ class SimpleClient {
         let promises = [];
         for (let org_name in this.netcfg.organizations) {
             let org_cfg = this.netcfg.organizations[org_name];
-            let admin_account = org_cfg.ca.admin_account;
             let client = this.client_for_org[org_name];
-            let ca = this.ca_for_org[org_name];
-            logger.debug('    enrolling admin user "%s" for organization "%s"', admin_account.enrollmentID, org_name);
-            // NOTE: org_cfg.ca.admin_account must have keys
-            // -    enrollmentID
-            // -    enrollmentSecret
+            let signedCertPEM = fs.readFileSync(path.join(__dirname, org_cfg.users.Admin.tls_cert_path));
+            let privateKeyPEM = fs.readFileSync(path.join(__dirname, org_cfg.users.Admin.tls_key_path));
+            logger.debug('    calling client.createUser on admin "%s" for organization "%s"', org_cfg.ca.admin_username, org_name);
+            logger.debug('    tls_cert_path: %j', org_cfg.users.Admin.tls_cert_path);
+            logger.debug('    tls_key_path: %j', org_cfg.users.Admin.tls_key_path);
             promises.push(
-                ca.enroll(admin_account)
-                .then((enrollment_res) => {
-                    logger.debug('    successfully enrolled user "%s"; now calling setEnrollment on that user', admin_account.enrollmentID);
-                    let admin_user = new User(admin_account.enrollmentID, client);
-//                     admin_user._enrollmentSecret = admin_account.enrollmentSecret;
-                    return admin_user.setEnrollment(enrollment_res.key, enrollment_res.certificate, org_cfg.mspid);
-                }).then(() => {
-                    logger.debug('    successfully called setEnrollment on user "%s"', admin_account.enrollmentID);
+                client.createUser({
+                    // NOTE: There doesn't seem to be any real reason this should be different than "Admin" except to identify that user within the crypto-config directories.
+                    username     : org_cfg.ca.admin_username,
+                    mspid        : org_cfg.mspid,
+                    cryptoContent: {
+                        signedCertPEM: Buffer.from(signedCertPEM).toString(),
+                        privateKeyPEM: Buffer.from(privateKeyPEM).toString()
+                    }
+                }).then((admin_user) => {
+                    logger.debug('    client.createUser succeeded; admin_user.getName() = "%s"', admin_user.getName());
                 })
             );
         }
         return Promise.all(promises);
+    }
+
+    create_channel__p () {
+        // Apparently the channel can be created through any client, because it only interacts
+        // with the orderer.  The peers get involved upon joinChannel.
+        let org_name = this.org_names[0];
+        let org_cfg = this.netcfg.organizations[org_name];
+        let client = this.client_for_org[org_name];
+        let chain  = this.chain_for_org[org_name];
+        let channel_name = this.appcfg.channelName;
+        let configtx = fs.readFileSync(path.join(__dirname, this.appcfg.configtx_path));
+
+        logger.debug('create_channel__p();');
+        logger.debug('    creating channel with name "%s"', channel_name);
+        logger.debug('    via orderer: %j', this.orderer);
+
+        // True indicates async call to retrieve the User object, and will also call client.setUserContext.
+        return client.getUserContext(org_cfg.ca.admin_username, true)
+        .then((user) => {
+            // This call uses the current user to sign.
+            let channel_cfg = client.extractChannelConfig(configtx);
+            var signature = client.signChannelConfig(channel_cfg);
+            let nonce = FabricClientUtils.getNonce();
+            let txId = FabricClient.buildTransactionID(nonce, user);
+            return client.createChannel({
+                name: this.appcfg.channelName,
+                orderer: this.orderer,
+                config: channel_cfg,
+                signatures: [signature],
+                txId: txId,
+                nonce: nonce
+            });
+        }).then((result) => {
+            logger.debug('    successfully created channel "%s"; result: %j', channel_name, result);
+        });
     }
 
     // NOTE: Transactions (and other user-dependent actions) should call setUserContext before transacting.
@@ -183,7 +231,21 @@ Promise.resolve()
 .then(() => {
     return simple_client.create_kvs_for_each_org__p()
 }).then(() => {
+    for (let i = 0; i < 10; i++) {
+        logger.debug('---------------------------------------------------------------------------');
+    }
+    logger.debug('-- pausing for a moment to let the human reader catch up ------------------');
+    return sleep(1000);
+}).then(() => {
     return simple_client.enroll_admin_for_each_org__p()
+}).then(() => {
+    for (let i = 0; i < 10; i++) {
+        logger.debug('---------------------------------------------------------------------------');
+    }
+    logger.debug('-- pausing for a moment to let the human reader catch up ------------------');
+    return sleep(1000);
+}).then(() => {
+    return simple_client.create_channel__p()
 });
 
 /*

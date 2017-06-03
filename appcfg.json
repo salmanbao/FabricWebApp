@@ -1,18 +1,14 @@
 {
    "host":"webserver",
    "port":"4000",
+   "configtx_path":"../../generated-artifacts/mychannel.tx",
    "chaincodeId":"mycc",
    "channelName":"mychannel",
    "chaincodeVersion": "v0",
-   "GOPATH":"../../generated-artifacts",
+   "GOPATH":"../../source-artifacts",
    "chaincodePath":"github.com/example_cc",
    "kvs_path_prefix":"/tmp/kvs/",
+   "cryptoSuite_path_prefix":"/tmp/cryptoSuite/",
    "eventWaitTime":"30000",
-   "invokeQueryFcnName":"invoke",
-   "users":[
-      {
-         "username":"admin",
-         "secret":"adminpw"
-      }
-   ]
+   "invokeQueryFcnName":"invoke"
 }
