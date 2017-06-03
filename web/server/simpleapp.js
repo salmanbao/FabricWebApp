@@ -72,10 +72,11 @@ class SimpleClient {
             this.orderer = client.newOrderer(
                 this.netcfg.orderer.url,
                 {
-                    // NOTE: this may or may not currently be necessary, as orderer TLS is currently disabled in this app
-                    // because I haven't been able to get it working.
-                    'pem'                     : Buffer.from(orderer_tls_cacerts).toString(),
-                    'ssl-target-name-override': this.netcfg.orderer.ssl_target_name_override
+                    // NOTE: Currently TLS is disabled on the orderer.
+//                     // NOTE: this may or may not currently be necessary, as orderer TLS is currently disabled in this app
+//                     // because I haven't been able to get it working.
+//                     'pem'                     : Buffer.from(orderer_tls_cacerts).toString(),
+//                     'ssl-target-name-override': this.netcfg.orderer.ssl_target_name_override
                 }
             );
         }
