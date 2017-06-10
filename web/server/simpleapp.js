@@ -141,31 +141,41 @@ class SimpleClient {
         // Create channel architectures.  The way this works is that organizations which are listed as participants in
         // a channel have newChain called on their Client object.
         for (const channel_name in appcfg.channels) {
-            const channel_cfg           = appcfg.channels[channel_name];
+            const channel_cfg                       = appcfg.channels[channel_name];
+            logger.debug('processing from appcfg: channel_cfg: %j', channel_cfg);
+            logger.debug('participating_peer_organizations: %j', channel_cfg.participating_peer_organizations);
 
-            for (const participating_org_name of channel_cfg.participating_organizations) {
-                logger.debug('creating channel architecture for channel "%s" and participating org "%s"', channel_name, participating_org_name);
-                const org               = this.organizations[participating_org_name];
-                const client            = org.client;
-                const channel           = {};
-                const chain             = client.newChain(channel_name);
+            for (const participating_peer_org_name in channel_cfg.participating_peer_organizations) {
+                logger.debug('creating channel architecture for channel "%s" and participating org "%s"', channel_name, participating_peer_org_name);
+                const participating_peer_org_cfg    = channel_cfg.participating_peer_organizations[participating_peer_org_name];
+                const participating_peer_org        = this.organizations[participating_peer_org_name];
+                const client                        = participating_peer_org.client;
+                const channel                       = {};
+                const chain                         = client.newChain(channel_name);
 
                 logger.debug('created chain: %j', chain);
-                channel.chain           = chain;
+                channel.chain                       = chain;
 
-                // Add the orderer to the chain.
+                // Add the participating orderer to the chain.
                 {
-                    assert(channel_cfg.orderer_specs.length == 1, 'must specify exactly one element in the orderer_specs attribute of each channel in appcfg.json');
-                    const orderer_spec  = channel_cfg.orderer_specs[0];
-                    chain.addOrderer(this.organizations[orderer_spec.organization_name].orderers[orderer_spec.orderer_name]);
+                    const participating_orderer_org_names   = Object.keys(channel_cfg.participating_orderer_organizations)
+                    assert(participating_orderer_org_names.length == 1, 'must specify exactly one element in the participating_orderer_organizations attribute of each channel in appcfg.json (for now -- this is a temporary limitation)');
+                    const participating_orderer_org_name    = participating_orderer_org_names[0]
+                    const participating_orderer_org_cfg     = channel_cfg.participating_orderer_organizations[participating_orderer_org_name];
+                    const participating_orderer_org         = this.organizations[participating_orderer_org_name];
+                    assert(participating_orderer_org_cfg.length == 1, 'must specify exactly one element in the single participating orderer org entry for each channel in appcfg.json (for now -- this is a temporary limitation)');
+                    const participating_orderer_name        = participating_orderer_org_cfg[0];
+                    logger.debug('for channel "%s", adding orderer "%s" from organization "%s"', channel_name, participating_orderer_name, participating_orderer_org_name);
+                    chain.addOrderer(participating_orderer_org.orderers[participating_orderer_name]);
                 }
 
-                // Add the peers to the chain
-                for (const peer_spec of channel_cfg.peer_specs) {
-                    chain.addPeer(this.organizations[peer_spec.organization_name].peers[peer_spec.peer_name]);
+                // Add the participating org's peers to the chain
+                for (const participating_peer_name of participating_peer_org_cfg.peers) {
+                    logger.debug('for channel "%s", adding peer "%s" from organization "%s"', channel_name, participating_peer_name, participating_peer_org_name);
+                    chain.addPeer(participating_peer_org.peers[participating_peer_name]);
                 }
 
-                org.channels[channel_name] = channel;
+                participating_peer_org.channels[channel_name] = channel;
             }
         }
     }
@@ -255,6 +265,7 @@ class SimpleClient {
             const channel_creator_org       = this.organizations[channel_cfg.channel_creator_spec.organization_name];
             logger.debug('channel_creator_org keys: %j', Object.keys(channel_creator_org));
             const channel_creator_client    = channel_creator_org.client;
+            let channel_creator_user;
             const channel                   = channel_creator_org.channels[channel_name];
             logger.debug('channel: %j', channel);
             const channel_orderers          = channel.chain.getOrderers();
@@ -263,7 +274,8 @@ class SimpleClient {
             const configtx                  = fs.readFileSync(path.join(__dirname, channel_cfg.configtx_path));
             promises.push(
                 channel_creator_client.getUserContext(channel_cfg.channel_creator_spec.user_name, true)
-                .then((channel_creator_user) => {
+                .then((channel_creator_user_) => {
+                    channel_creator_user = channel_creator_user_;
                     logger.debug('channel_creator_user: %j', channel_creator_user);
                     const extracted_channel_config  = channel_creator_client.extractChannelConfig(configtx);
                     const signature                 = channel_creator_client.signChannelConfig(extracted_channel_config);
@@ -279,46 +291,62 @@ class SimpleClient {
                         nonce: nonce
                     });
                 })
-                .then((result) => {
+                .then(result => {
                     logger.debug('    successfully created channel "%s" using organization "%s"\'s client; result: %j', channel_name, channel_creator_org, result);
+                    const genesis_block_retrieval_delay = 3000;
+                    logger.debug('    sleeping for %d ms before retrieving genesis block (there appears to be some missing event notification in fabric-sdk-node, making this delay necessary)', genesis_block_retrieval_delay);
+                    return sleep(3000);
+                })
+                .then(() => {
+                    logger.debug('    attempting to retrieve genesis block');
+                    const nonce = FabricClientUtils.getNonce();
+                    const txId = FabricClient.buildTransactionID(nonce, channel_creator_user);
+                    return channel.chain.getGenesisBlock({
+                        txId: txId,
+                        nonce: nonce
+                    });
+                })
+                .then(genesis_block_protobuf => {
+                    logger.debug('    successfully retrieved genesis block: "%s"', genesis_block_protobuf.toString());
+                    logger.debug('    genesis_block_protobuf.header: ', genesis_block_protobuf.header);
+//                     logger.debug('    genesis_block_protobuf.data: ', genesis_block_protobuf.data);
+                    logger.debug('    genesis_block_protobuf.metadata: ', genesis_block_protobuf.metadata);
+                    channel.genesis_block_protobuf = genesis_block_protobuf;
                 })
             );
         }
+        // NOTE: This might also suffer the non-reentrancy problem like the other one, and may
+        // need to be executed serially.
         return Promise.all(promises);
     }
 /*
-    join_channel__p () {
-        logger.debug('join_channel__p();');
-
-        // First we must retrieve the genesis block.  Presumably this can be done from any client just like createChannel.
-        const org_name = this.org_names[0];
-        const org_cfg = this.netcfg.organizations[org_name];
-        const client = this.client_for_org[org_name];
-        const chain = this.chain_for_org[org_name]; // Could potentially use client.getChain here instead of using this.chain_for_org
-        const admin_user = client.getUserContext(org_cfg.ca.admin_username, false); // false indicates synchronous call.
-
-        const nonce = utils.getNonce();
-        const txId = FabricClient.buildTransactionID(nonce, admin_user);
-        return chain.getGenesisBlock({
-            txId: txId,
-            nonce: nonce
-        })
-        .then((genesis_block) => {
-        })
-
-        return chain.getGenesisBlock(request);
-        return chain.
+    join_channels__p () {
+        logger.debug('join_channels__p();');
+        const promises = [];
+        for (const channel_name in this.appcfg.channels) {
+            const channel_cfg               = this.appcfg.channels[channel_name];
+            logger.debug('attempting to read config of channel "%s"; config is %j', channel_name, channel_cfg);
+            const channel_creator_org       = this.organizations[channel_cfg.channel_creator_spec.organization_name];
+            logger.debug('channel_creator_org keys: %j', Object.keys(channel_creator_org));
+            const channel_creator_client    = channel_creator_org.client;
+            let channel_creator_user;
+            const channel                   = channel_creator_org.channels[channel_name];
+            logger.debug('channel: %j', channel);
 
 
+            promises.push(
+                client.getUserContext(channel_cfg.channel_creator_spec.user_name, true)
+                .then(channel_creator_user_ => {
+                    channel_creator_user = channel_creator_user_;
+                    for (const participating_peer_org_name in channel_cfg.participating_peer_organizations) {
 
-//   const nonce = utils.getNonce();
-//   const txId = HFC.buildTransactionID(nonce, admin);
-//   const request = {
-//     txId: txId,
-//     nonce: nonce
-//   };
-//   return chain.getGenesisBlock(request);
-
+                    }
+                })
+            );
+        }
+        // NOTE: This might also suffer the non-reentrancy problem like the other one, and may
+        // need to be executed serially.
+        return Promise.all(promises);
 
         const promises = [];
         for (const org_name in this.netcfg.organizations) {
@@ -394,6 +422,10 @@ Promise.resolve()
 })
 .then(() => {
     return simple_client.create_channels__p()
+})
+.catch(err => {
+    logger.error('UNHANDLED ERROR: %j', err);
+    process.exit(1);
 });
 
 /*
