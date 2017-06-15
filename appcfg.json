@@ -26,12 +26,14 @@
             },
             "participating_peer_organizations": {
                 "org0": {
+                    "channel_joiner_user_name": "Admin",
                     "peers": [
                         "peer0.org0.example.com",
                         "peer1.org0.example.com"
                     ]
                 },
                 "org1": {
+                    "channel_joiner_user_name": "Admin",
                     "peers": [
                         "peer0.org1.example.com",
                         "peer1.org1.example.com"

@@ -67,8 +67,8 @@ class SimpleClient {
         const appcfg = this.appcfg = require('../../appcfg.json'); // read-only configuration for application
 
         logger.debug('SimpleClient()');
-        logger.debug('netcfg: %j', netcfg);
-        logger.debug('appcfg: %j', appcfg);
+        logger.debug('netcfg:', netcfg);
+        logger.debug('appcfg:', appcfg);
 
         // Create organizations.
         this.organizations  = {};
@@ -142,8 +142,8 @@ class SimpleClient {
         // a channel have newChain called on their Client object.
         for (const channel_name in appcfg.channels) {
             const channel_cfg                       = appcfg.channels[channel_name];
-            logger.debug('processing from appcfg: channel_cfg: %j', channel_cfg);
-            logger.debug('participating_peer_organizations: %j', channel_cfg.participating_peer_organizations);
+            logger.debug('processing from appcfg: channel_cfg:', channel_cfg);
+            logger.debug('participating_peer_organizations:', channel_cfg.participating_peer_organizations);
 
             for (const participating_peer_org_name in channel_cfg.participating_peer_organizations) {
                 logger.debug('creating channel architecture for channel "%s" and participating org "%s"', channel_name, participating_peer_org_name);
@@ -153,7 +153,7 @@ class SimpleClient {
                 const channel                       = {};
                 const chain                         = client.newChain(channel_name);
 
-                logger.debug('created chain: %j', chain);
+                logger.debug('created chain:', chain);
                 channel.chain                       = chain;
 
                 // Add the participating orderer to the chain.
@@ -187,7 +187,7 @@ class SimpleClient {
         for (const org_name in this.organizations) {
             const org       = this.organizations[org_name];
             const client    = org.client;
-            logger.debug('    client: %j', client);
+            logger.debug('    client:', client);
             const kvs_path  = this.appcfg.kvs_path_prefix + org_name;
             logger.debug('    creating kvs for organization "%s" using path "%s"', org_name, kvs_path);
             promises.push(
@@ -263,11 +263,11 @@ class SimpleClient {
             const channel_cfg               = this.appcfg.channels[channel_name];
             logger.debug('attempting to read config of channel "%s"; config is %j', channel_name, channel_cfg);
             const channel_creator_org       = this.organizations[channel_cfg.channel_creator_spec.organization_name];
-            logger.debug('channel_creator_org keys: %j', Object.keys(channel_creator_org));
+            logger.debug('channel_creator_org keys:', Object.keys(channel_creator_org));
             const channel_creator_client    = channel_creator_org.client;
             let channel_creator_user;
             const channel                   = channel_creator_org.channels[channel_name];
-            logger.debug('channel: %j', channel);
+            logger.debug('channel:', channel);
             const channel_orderers          = channel.chain.getOrderers();
             assert(channel_orderers.length == 1, 'currently you may only specify one orderer per channel');
             const channel_orderer           = channel_orderers[0];
@@ -276,7 +276,7 @@ class SimpleClient {
                 channel_creator_client.getUserContext(channel_cfg.channel_creator_spec.user_name, true)
                 .then((channel_creator_user_) => {
                     channel_creator_user = channel_creator_user_;
-                    logger.debug('channel_creator_user: %j', channel_creator_user);
+                    logger.debug('channel_creator_user:', channel_creator_user);
                     const extracted_channel_config  = channel_creator_client.extractChannelConfig(configtx);
                     const signature                 = channel_creator_client.signChannelConfig(extracted_channel_config);
                     const nonce                     = FabricClientUtils.getNonce();
@@ -293,25 +293,26 @@ class SimpleClient {
                 })
                 .then(result => {
                     logger.debug('    successfully created channel "%s" using organization "%s"\'s client; result: %j', channel_name, channel_creator_org, result);
-                    const genesis_block_retrieval_delay = 3000;
-                    logger.debug('    sleeping for %d ms before retrieving genesis block (there appears to be some missing event notification in fabric-sdk-node, making this delay necessary)', genesis_block_retrieval_delay);
-                    return sleep(3000);
-                })
-                .then(() => {
-                    logger.debug('    attempting to retrieve genesis block');
-                    const nonce = FabricClientUtils.getNonce();
-                    const txId = FabricClient.buildTransactionID(nonce, channel_creator_user);
-                    return channel.chain.getGenesisBlock({
-                        txId: txId,
-                        nonce: nonce
-                    });
-                })
-                .then(genesis_block_protobuf => {
-                    logger.debug('    successfully retrieved genesis block: "%s"', genesis_block_protobuf.toString());
-                    logger.debug('    genesis_block_protobuf.header: ', genesis_block_protobuf.header);
-//                     logger.debug('    genesis_block_protobuf.data: ', genesis_block_protobuf.data);
-                    logger.debug('    genesis_block_protobuf.metadata: ', genesis_block_protobuf.metadata);
-                    channel.genesis_block_protobuf = genesis_block_protobuf;
+//                     const genesis_block_retrieval_delay = 3000;
+//                     logger.debug('    sleeping for %d ms before retrieving genesis block (there appears to be some missing event notification in fabric-sdk-node, making this delay necessary)', genesis_block_retrieval_delay);
+//                     return sleep(3000);
+//                 })
+//                 .then(() => {
+//                     logger.debug('    attempting to retrieve genesis block');
+//                     const nonce = FabricClientUtils.getNonce();
+//                     const txId = FabricClient.buildTransactionID(nonce, channel_creator_user);
+//                     return channel.chain.getGenesisBlock({
+//                         txId: txId,
+//                         nonce: nonce
+//                     });
+//                 })
+//                 .then(genesis_block_protobuf => {
+//                     logger.debug('    successfully retrieved genesis block: "%s"', genesis_block_protobuf.toString());
+//                     logger.debug('    genesis_block_protobuf.header: ', genesis_block_protobuf.header);
+// //                     logger.debug('    genesis_block_protobuf.data: ', genesis_block_protobuf.data);
+//                     logger.debug('    genesis_block_protobuf.metadata: ', genesis_block_protobuf.metadata);
+//                     channel.genesis_block_protobuf = genesis_block_protobuf;
+//                 })
                 })
             );
         }
@@ -319,78 +320,74 @@ class SimpleClient {
         // need to be executed serially.
         return Promise.all(promises);
     }
-/*
+
     join_channels__p () {
         logger.debug('join_channels__p();');
         const promises = [];
+
         for (const channel_name in this.appcfg.channels) {
             const channel_cfg               = this.appcfg.channels[channel_name];
-            logger.debug('attempting to read config of channel "%s"; config is %j', channel_name, channel_cfg);
             const channel_creator_org       = this.organizations[channel_cfg.channel_creator_spec.organization_name];
-            logger.debug('channel_creator_org keys: %j', Object.keys(channel_creator_org));
             const channel_creator_client    = channel_creator_org.client;
-            let channel_creator_user;
-            const channel                   = channel_creator_org.channels[channel_name];
-            logger.debug('channel: %j', channel);
+            logger.debug('processing from appcfg: channel_cfg:', channel_cfg);
+            logger.debug('participating_peer_organizations:', channel_cfg.participating_peer_organizations);
 
+            for (const participating_peer_org_name in channel_cfg.participating_peer_organizations) {
+                logger.debug('creating channel architecture for channel "%s" and participating org "%s"', channel_name, participating_peer_org_name);
+                const participating_peer_org_cfg    = channel_cfg.participating_peer_organizations[participating_peer_org_name];
+                const participating_peer_org        = this.organizations[participating_peer_org_name];
+                const client                        = participating_peer_org.client;
+                const channel                       = participating_peer_org.channels[channel_name];
+//                 const genesis_block_protobuf        = channel.genesis_block_protobuf;
+//                 logger.debug('genesis_block_protobuf: ', genesis_block_protobuf);
+                let genesis_block_protobuf;
+                const chain                         = channel.chain;
+                const targets                       = [];
+                for (const participating_peer_name of participating_peer_org_cfg.peers) {
+                    targets.push(participating_peer_org.peers[participating_peer_name]);
+                }
+                logger.debug('targets for joinChannel:', targets);
 
-            promises.push(
-                client.getUserContext(channel_cfg.channel_creator_spec.user_name, true)
-                .then(channel_creator_user_ => {
-                    channel_creator_user = channel_creator_user_;
-                    for (const participating_peer_org_name in channel_cfg.participating_peer_organizations) {
-
-                    }
-                })
-            );
+                // NOTE: We have to retrieve the genesis block for each call to chain.joinChannel because
+                // that call destroys it.  Alternatively, figure out how to deep copy genesis_block_protobuf
+                // as retrieved earlier (because each retrieval is exactly the same).
+                promises.push(
+                    channel_creator_client.getUserContext(channel_cfg.channel_creator_spec.user_name, true)
+                    .then(channel_creator_user => {
+                        logger.debug('    attempting to retrieve genesis block');
+                        const nonce = FabricClientUtils.getNonce();
+                        const txId = FabricClient.buildTransactionID(nonce, channel_creator_user);
+                        return channel.chain.getGenesisBlock({
+                            txId: txId,
+                            nonce: nonce
+                        });
+                    })
+                    .then(genesis_block_protobuf_ => {
+                        logger.debug('successfully retrieved genesis block');
+                        genesis_block_protobuf = genesis_block_protobuf_;
+                        return client.getUserContext(participating_peer_org_cfg.channel_joiner_user_name, true)
+                    })
+                    .then(channel_joiner_user => {
+                        logger.debug('channel_joiner_user.getName():', channel_joiner_user.getName());
+                        const nonce                 = FabricClientUtils.getNonce();
+                        const txId                  = FabricClient.buildTransactionID(nonce, channel_joiner_user);
+                        logger.debug('calling chain.joinChannel on targets %j using user "%s" on behalf of peer org "%s"', targets, participating_peer_org_cfg.channel_joiner_user_name, participating_peer_org_name);
+                        return chain.joinChannel({
+                            targets: targets,
+                            block: genesis_block_protobuf,
+                            txId: txId,
+                            nonce: nonce
+                        });
+                    })
+                    .then(result => {
+                        logger.debug('chain.joinChannel succeeded for peer org "%s"; result: ', participating_peer_org_name, result);
+                    })
+                );
+            }
         }
-        // NOTE: This might also suffer the non-reentrancy problem like the other one, and may
-        // need to be executed serially.
         return Promise.all(promises);
-
-        const promises = [];
-        for (const org_name in this.netcfg.organizations) {
-            const chain = this.chain_for_org[org_name];
-            promises.push(
-                client.joinChannel({
-                    targets: chain.getPeers(),
-                    block  :
-
-
-
-        const org_name = this.org_names[0];
-//         const org_cfg = this.netcfg.organizations[org_name];
-//         const client = this.client_for_org[org_name];
-//         const chain  = this.chain_for_org[org_name];
-//         const channel_name = this.appcfg.channelName;
-//         const configtx = fs.readFileSync(path.join(__dirname, this.appcfg.configtx_path));
-//
-//         logger.debug('create_channel__p();');
-//         logger.debug('    creating channel with name "%s"', channel_name);
-//         logger.debug('    via orderer: %j', this.orderer);
-//
-//         // True indicates async call to retrieve the User object, and will also call client.setUserContext.
-//         return client.getUserContext(org_cfg.ca.admin_username, true)
-//         .then((user) => {
-//             // This call uses the current user to sign.
-//             const channel_cfg = client.extractChannelConfig(configtx);
-//             const signature = client.signChannelConfig(channel_cfg);
-//             const nonce = FabricClientUtils.getNonce();
-//             const txId = FabricClient.buildTransactionID(nonce, user);
-//             return client.createChannel({
-//                 name: this.appcfg.channelName,
-//                 orderer: this.orderer,
-//                 config: channel_cfg,
-//                 signatures: [signature],
-//                 txId: txId,
-//                 nonce: nonce
-//             });
-//         })
-//         .then((result) => {
-//             logger.debug('    successfully created channel "%s"; result: %j', channel_name, result);
-//         });
     }
-*/
+
     // NOTE: Transactions (and other user-dependent actions) should call setUserContext before transacting.
 };
 
@@ -423,8 +420,18 @@ Promise.resolve()
 .then(() => {
     return simple_client.create_channels__p()
 })
+.then(() => {
+    for (let i = 0; i < 10; i++) {
+        logger.debug('---------------------------------------------------------------------------');
+    }
+    logger.debug('-- pausing for a moment to let the human reader catch up ------------------');
+    return sleep(1000);
+})
+.then(() => {
+    return simple_client.join_channels__p()
+})
 .catch(err => {
-    logger.error('UNHANDLED ERROR: %j', err);
+    logger.error('UNHANDLED ERROR: ', err);
     process.exit(1);
 });
 

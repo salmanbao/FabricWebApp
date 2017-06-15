@@ -52,12 +52,14 @@
             "peers": {
                 "peer0.org0.example.com": {
                     "requests_remote": {
-                        "protocol": "grpcs",
+                        "protocol": "grpc",
+                        "__protocol": "grpcs",
                         "host": "peer0.org0.example.com",
                         "port": 7051
                     },
                     "events_remote": {
-                        "protocol": "grpcs",
+                        "protocol": "grpc",
+                        "__protocol": "grpcs",
                         "host": "peer0.org0.example.com",
                         "port": 7053
                     },
@@ -66,12 +68,14 @@
                 },
                 "peer1.org0.example.com": {
                     "requests_remote": {
-                        "protocol": "grpcs",
+                        "protocol": "grpc",
+                        "__protocol": "grpcs",
                         "host": "peer1.org0.example.com",
                         "port": 7051
                     },
                     "events_remote": {
-                        "protocol": "grpcs",
+                        "protocol": "grpc",
+                        "__protocol": "grpcs",
                         "host": "peer1.org0.example.com",
                         "port": 7053
                     },
@@ -110,12 +114,14 @@
             "peers": {
                 "peer0.org1.example.com": {
                     "requests_remote": {
-                        "protocol": "grpcs",
+                        "protocol": "grpc",
+                        "__protocol": "grpcs",
                         "host": "peer0.org1.example.com",
                         "port": 7051
                     },
                     "events_remote": {
-                        "protocol": "grpcs",
+                        "protocol": "grpc",
+                        "__protocol": "grpcs",
                         "host": "peer0.org1.example.com",
                         "port": 7053
                     },
@@ -124,12 +130,14 @@
                 },
                 "peer1.org1.example.com": {
                     "requests_remote": {
-                        "protocol": "grpcs",
+                        "protocol": "grpc",
+                        "__protocol": "grpcs",
                         "host": "peer1.org1.example.com",
                         "port": 7051
                     },
                     "events_remote": {
-                        "protocol": "grpcs",
+                        "protocol": "grpc",
+                        "__protocol": "grpcs",
                         "host": "peer1.org1.example.com",
                         "port": 7053
                     },
