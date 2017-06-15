@@ -70,6 +70,9 @@ class SimpleClient {
         logger.debug('netcfg:', netcfg);
         logger.debug('appcfg:', appcfg);
 
+        // Set up the GOPATH env var
+        process.env.GOPATH = path.join(__dirname, this.appcfg.GOPATH);
+
         // Create organizations.
         this.organizations  = {};
         for (const org_name in netcfg.organizations) {
@@ -123,7 +126,8 @@ class SimpleClient {
                     assemble_url_from_remote(peer_cfg.requests_remote),
                     {
                         'pem'                     : Buffer.from(peer_tls_cacerts).toString(),
-                        'ssl-target-name-override': peer_cfg.ssl_target_name_override
+                        'ssl-target-name-override': peer_cfg.ssl_target_name_override,
+                        'request-timeout'         : 120000 // NOTE: This is probably excessive, but for now use it.
                     }
                 );
 //                 chain.addPeer(peer); // TODO: add the peer to chain in a separate pass -- the application defines the chain/channel
@@ -187,7 +191,6 @@ class SimpleClient {
         for (const org_name in this.organizations) {
             const org       = this.organizations[org_name];
             const client    = org.client;
-            logger.debug('    client:', client);
             const kvs_path  = this.appcfg.kvs_path_prefix + org_name;
             logger.debug('    creating kvs for organization "%s" using path "%s"', org_name, kvs_path);
             promises.push(
@@ -267,7 +270,6 @@ class SimpleClient {
             const channel_creator_client    = channel_creator_org.client;
             let channel_creator_user;
             const channel                   = channel_creator_org.channels[channel_name];
-            logger.debug('channel:', channel);
             const channel_orderers          = channel.chain.getOrderers();
             assert(channel_orderers.length == 1, 'currently you may only specify one orderer per channel');
             const channel_orderer           = channel_orderers[0];
@@ -276,7 +278,6 @@ class SimpleClient {
                 channel_creator_client.getUserContext(channel_cfg.channel_creator_spec.user_name, true)
                 .then((channel_creator_user_) => {
                     channel_creator_user = channel_creator_user_;
-                    logger.debug('channel_creator_user:', channel_creator_user);
                     const extracted_channel_config  = channel_creator_client.extractChannelConfig(configtx);
                     const signature                 = channel_creator_client.signChannelConfig(extracted_channel_config);
                     const nonce                     = FabricClientUtils.getNonce();
@@ -293,26 +294,6 @@ class SimpleClient {
                 })
                 .then(result => {
                     logger.debug('    successfully created channel "%s" using organization "%s"\'s client; result: %j', channel_name, channel_creator_org, result);
-//                     const genesis_block_retrieval_delay = 3000;
-//                     logger.debug('    sleeping for %d ms before retrieving genesis block (there appears to be some missing event notification in fabric-sdk-node, making this delay necessary)', genesis_block_retrieval_delay);
-//                     return sleep(3000);
-//                 })
-//                 .then(() => {
-//                     logger.debug('    attempting to retrieve genesis block');
-//                     const nonce = FabricClientUtils.getNonce();
-//                     const txId = FabricClient.buildTransactionID(nonce, channel_creator_user);
-//                     return channel.chain.getGenesisBlock({
-//                         txId: txId,
-//                         nonce: nonce
-//                     });
-//                 })
-//                 .then(genesis_block_protobuf => {
-//                     logger.debug('    successfully retrieved genesis block: "%s"', genesis_block_protobuf.toString());
-//                     logger.debug('    genesis_block_protobuf.header: ', genesis_block_protobuf.header);
-// //                     logger.debug('    genesis_block_protobuf.data: ', genesis_block_protobuf.data);
-//                     logger.debug('    genesis_block_protobuf.metadata: ', genesis_block_protobuf.metadata);
-//                     channel.genesis_block_protobuf = genesis_block_protobuf;
-//                 })
                 })
             );
         }
@@ -338,8 +319,6 @@ class SimpleClient {
                 const participating_peer_org        = this.organizations[participating_peer_org_name];
                 const client                        = participating_peer_org.client;
                 const channel                       = participating_peer_org.channels[channel_name];
-//                 const genesis_block_protobuf        = channel.genesis_block_protobuf;
-//                 logger.debug('genesis_block_protobuf: ', genesis_block_protobuf);
                 let genesis_block_protobuf;
                 const chain                         = channel.chain;
                 const targets                       = [];
@@ -380,7 +359,103 @@ class SimpleClient {
                         });
                     })
                     .then(result => {
-                        logger.debug('chain.joinChannel succeeded for peer org "%s"; result: ', participating_peer_org_name, result);
+                        logger.debug('chain.joinChannel succeeded for peer org "%s"; result: %j', participating_peer_org_name, result);
+                        logger.debug('calling chain.initialize() for peer org "%s"', participating_peer_org_name);
+                        return chain.initialize();
+                    })
+                    .then(result => {
+                        logger.debug('successfully initialized chain for peer org "%s"; result keys: %j', participating_peer_org_name, Object.keys(result));
+                    })
+                );
+            }
+        }
+        return Promise.all(promises);
+    }
+
+    install_and_instantiate_chaincode__p () {
+        logger.debug('install_and_instantiate_chaincode__p();');
+        const promises = [];
+
+        for (const channel_name in this.appcfg.channels) {
+            const channel_cfg               = this.appcfg.channels[channel_name];
+            for (const participating_peer_org_name in channel_cfg.participating_peer_organizations) {
+                const participating_peer_org_cfg    = channel_cfg.participating_peer_organizations[participating_peer_org_name];
+                const participating_peer_org        = this.organizations[participating_peer_org_name];
+                const client                        = participating_peer_org.client;
+                const channel                       = participating_peer_org.channels[channel_name];
+                const chain                         = channel.chain;
+                const targets                       = [];
+                for (const participating_peer_name of participating_peer_org_cfg.peers) {
+                    targets.push(participating_peer_org.peers[participating_peer_name]);
+                }
+                logger.debug('targets for installChaincode:', targets);
+
+                promises.push(
+                    client.getUserContext("Admin", true)
+                    .then(admin_user => {
+                        const nonce = FabricClientUtils.getNonce();
+                        const txId = FabricClient.buildTransactionID(nonce, admin_user);
+                        return client.installChaincode({
+                            targets: targets,
+                            chaincodePath: channel_cfg.chaincode.path,
+                            chaincodeId: channel_cfg.chaincode.id,
+                            chaincodeVersion: channel_cfg.chaincode.version,
+                            txId: txId,
+                            nonce: nonce
+                        });
+                    })
+                    .then(result => {
+                        logger.debug('client.installChaincode call on peers of peer org "%s" returned', participating_peer_org_name);
+                        const proposal_responses = result[0];
+                        for (var i = 0; i < proposal_responses.length; i++) {
+                            if (proposal_responses[i] instanceof Error) {
+                                logger.debug('error received in client.installChaincode response:', proposal_responses[i]);
+                                throw new Error(proposal_responses[i]);
+                            }
+                        }
+                        logger.debug('installChaincode proposal response succeeded on peers of peer org "%s".', participating_peer_org_name);
+                        // This constant retrieving of user contexts is dumb and should be fixed
+                        return client.getUserContext("Admin", true);
+                    })
+                    .then(admin_user => {
+                        const nonce = FabricClientUtils.getNonce();
+                        const txId = FabricClient.buildTransactionID(nonce, admin_user);
+                        const fcn = 'init';
+                        const args = ['alice', '123', 'bob', '456'];
+                        logger.debug('calling chain.sendInstantiateProposal on peers of peer org "%s"; fcn = "%s", args = %j.', participating_peer_org_name, fcn, args);
+                        // TODO: specify unanimous endorsement policy
+                        return chain.sendInstantiateProposal({
+                            targets: targets,
+                            chaincodePath: channel_cfg.chaincode.path,
+                            chaincodeId: channel_cfg.chaincode.id,
+                            chaincodeVersion: channel_cfg.chaincode.version,
+                            fcn: fcn,
+                            args: args,
+                            chainId: channel_name,
+                            txId: txId,
+                            nonce: nonce
+                        })
+                    })
+                    .then(result => {
+                        logger.debug('call to chain.sendInstantiateProposal succeeded');
+                        const proposal_responses = result[0];
+                        const proposal = result[1];
+                        const header   = result[2];
+                        for (var i = 0; i < proposal_responses.length; i++) {
+                            if (proposal_responses[i] instanceof Error) {
+                                logger.debug('error received in chain.sendInstantiateProposal response:', proposal_responses[i]);
+                                throw new Error(proposal_responses[i]);
+                            }
+                        }
+                        logger.debug('calling chain.sendTransaction on for sendInstantiateProposal responses; peer org is "%s".', participating_peer_org_name);
+                        return chain.sendTransaction({
+                            proposalResponses: proposal_responses,
+                            proposal: proposal,
+                            header: header
+                        });
+                    })
+                    .then(result => {
+                        logger.debug('successfully sent transaction for sendInstantiateProposal; peer org is "%s"; result: %j', participating_peer_org_name, result);
                     })
                 );
             }
@@ -393,45 +468,48 @@ class SimpleClient {
 
 const simple_client = new SimpleClient();
 
-// console.log('simple_client:');
-// console.log(simple_client);
+function let_the_human_reader_catch_up__p (delay_milliseconds) {
+    for (let i = 0; i < 10; i++) {
+        logger.debug('---------------------------------------------------------------------------');
+    }
+    logger.debug('-- pausing for a moment to let the human reader catch up ------------------');
+    return sleep(delay_milliseconds);
+}
 
 Promise.resolve()
 .then(() => {
     return simple_client.create_kvs_for_each_org__p()
 })
 .then(() => {
-    for (let i = 0; i < 10; i++) {
-        logger.debug('---------------------------------------------------------------------------');
-    }
-    logger.debug('-- pausing for a moment to let the human reader catch up ------------------');
-    return sleep(1000);
+    return let_the_human_reader_catch_up__p(1000)
 })
 .then(() => {
     return simple_client.enroll_all_users_for_each_org__p()
 })
 .then(() => {
-    for (let i = 0; i < 10; i++) {
-        logger.debug('---------------------------------------------------------------------------');
-    }
-    logger.debug('-- pausing for a moment to let the human reader catch up ------------------');
-    return sleep(1000);
+    return let_the_human_reader_catch_up__p(1000)
 })
 .then(() => {
     return simple_client.create_channels__p()
 })
 .then(() => {
-    for (let i = 0; i < 10; i++) {
-        logger.debug('---------------------------------------------------------------------------');
-    }
-    logger.debug('-- pausing for a moment to let the human reader catch up ------------------');
-    return sleep(1000);
+    return let_the_human_reader_catch_up__p(1000)
 })
 .then(() => {
     return simple_client.join_channels__p()
 })
+.then(() => {
+    return let_the_human_reader_catch_up__p(1000)
+})
+.then(() => {
+    return simple_client.install_and_instantiate_chaincode__p()
+})
+.then(() => {
+    logger.debug('all simple_client calls succeeded.');
+    return let_the_human_reader_catch_up__p(30000);
+})
 .catch(err => {
-    logger.error('UNHANDLED ERROR: ', err);
+    logger.error('CAUGHT UNHANDLED ERROR: ', err);
     process.exit(1);
 });
 
