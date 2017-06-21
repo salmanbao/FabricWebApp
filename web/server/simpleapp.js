@@ -463,6 +463,90 @@ class SimpleClient {
         return Promise.all(promises);
     }
 
+    // request should be a dict with elements:
+    // - channel_name
+    // - invoking_user_name
+    // - invoking_user_org_name
+    // - args (the first of which should be the function name)
+    // - query_only (a boolean indicating if the payload should just be returned after transaction
+    //   proposal; i.e. the transaction won't be committed to the ledger)
+    invoke__p (request) {
+        logger.debug('---------------------------------');
+        logger.debug('---------------------------------');
+        logger.debug('---------------------------------');
+        logger.debug('INVOKE; request: ', request);
+
+        const channel_name                  = request.channel_name;
+        const invoking_user_name            = request.invoking_user_name;
+        const invoking_user_org_name        = request.invoking_user_org_name;
+        const args                          = request.args;
+        const query_only                    = request.query_only;
+
+        const channel_cfg                   = this.appcfg.channels[channel_name];
+        const invoking_peer_org             = this.organizations[invoking_user_org_name];
+        const client                        = invoking_peer_org.client;
+        const channel                       = invoking_peer_org.channels[channel_name];
+        const chain                         = channel.chain;
+
+        // TEMP HACK - just invoke using Admin account
+        return client.getUserContext(invoking_user_name, true)
+        .then(user => {
+            const nonce = FabricClientUtils.getNonce();
+            const txId = FabricClient.buildTransactionID(nonce, user);
+            logger.debug('    calling chain.sendTransactionProposal');
+            return chain.sendTransactionProposal({
+                chaincodeId: channel_cfg.chaincode.id,
+                chainId: channel_name,
+                txId: txId,
+                nonce: nonce,
+                args: args
+            })
+        })
+        .then(result => {
+            logger.debug('call to chain.sendTransactionProposal succeeded');
+            const proposal_responses = result[0];
+            const proposal = result[1];
+            const header   = result[2];
+            // Make sure all proposal_responses are the same.
+            if (!chain.compareProposalResponseResults(proposal_responses)) {
+                logger.debug('chain.compareProposalResponseResults failed');
+                throw new Error('chain.compareProposalResponseResults failed');
+            }
+            // Verify that the proposal responses are signed correctly.
+            for (var i = 0; i < proposal_responses.length; i++) {
+                if (!chain.verifyProposalResponse(proposal_responses[i])) {
+                    logger.debug('chain.verifyProposalResponses failed');
+                    throw new Error('chain.verifyProposalResponses failed');
+                }
+            }
+            // Check if the response is an error.
+            assert(proposal_responses.length > 0, 'proposal_responses has no elements');
+            if (proposal_responses[0] instanceof Error) {
+                logger.debug('error received in chain.sendInstantiateProposal response:', proposal_responses[0]);
+                throw new Error(proposal_responses[0]);
+            }
+            // Otherwise everything is good, so grab the payload.
+            const payload = proposal_responses[0].response.payload;
+            const payload_as_string = Buffer.from(payload).toString();
+            logger.debug('*** invoke succeeded, response payload (as string) was "%s"', payload_as_string);
+            // If query_only was specified, then return now.
+            if (query_only) {
+                // TODO: probably should return the payload itself
+                return payload_as_string;
+            }
+            logger.debug('calling chain.sendTransaction on for sendTransactionProposal responses');
+            return chain.sendTransaction({
+                proposalResponses: proposal_responses,
+                proposal: proposal,
+                header: header
+            })
+            .then(result => {
+                logger.debug('successfully sent transaction; result: %j', result);
+                return result;
+            });
+        })
+    }
+
     // NOTE: Transactions (and other user-dependent actions) should call setUserContext before transacting.
 };
 
@@ -472,7 +556,7 @@ function let_the_human_reader_catch_up__p (delay_milliseconds) {
     for (let i = 0; i < 10; i++) {
         logger.debug('---------------------------------------------------------------------------');
     }
-    logger.debug('-- pausing for a moment to let the human reader catch up ------------------');
+    logger.debug('-- pausing for %d ms to let the human reader catch up ------------------', delay_milliseconds);
     return sleep(delay_milliseconds);
 }
 
@@ -505,8 +589,71 @@ Promise.resolve()
     return simple_client.install_and_instantiate_chaincode__p()
 })
 .then(() => {
-    logger.debug('all simple_client calls succeeded.');
-    return let_the_human_reader_catch_up__p(30000);
+    return let_the_human_reader_catch_up__p(5000)
+})
+.then(() => {
+    const channel_name = 'mychannel';
+    return Promise.all([
+        simple_client.invoke__p({
+            channel_name: channel_name,
+            invoking_user_name: 'Admin', // TEMP HACK
+            invoking_user_org_name: 'org0',
+            args: ['query', 'alice'],
+            query_only: true
+        }),
+        simple_client.invoke__p({
+            channel_name: channel_name,
+            invoking_user_name: 'Admin', // TEMP HACK
+            invoking_user_org_name: 'org0',
+            args: ['query', 'bob'],
+            query_only: true
+        })
+    ]);
+})
+.then(balances => {
+    logger.debug('balances = %j', balances);
+    assert(balances[0] == '123' && balances[1] == '456', 'got incorrect balances from queries');
+    return let_the_human_reader_catch_up__p(3000);
+})
+.then(() => {
+    const channel_name = 'mychannel';
+    return simple_client.invoke__p({
+        channel_name: channel_name,
+        invoking_user_name: 'Admin', // TEMP HACK
+        invoking_user_org_name: 'org0',
+        args: ['move', 'alice', 'bob', '20'],
+        query_only: false
+    });
+})
+.then(() => {
+    return let_the_human_reader_catch_up__p(5000)
+})
+.then(() => {
+    const channel_name = 'mychannel';
+    return Promise.all([
+        simple_client.invoke__p({
+            channel_name: channel_name,
+            invoking_user_name: 'Admin', // TEMP HACK
+            invoking_user_org_name: 'org0',
+            args: ['query', 'alice'],
+            query_only: true
+        }),
+        simple_client.invoke__p({
+            channel_name: channel_name,
+            invoking_user_name: 'Admin', // TEMP HACK
+            invoking_user_org_name: 'org0',
+            args: ['query', 'bob'],
+            query_only: true
+        })
+    ]);
+})
+.then(balances => {
+    logger.debug('balances = %j', balances);
+    assert(balances[0] == '103' && balances[1] == '476', 'got incorrect balances from queries');
+    return let_the_human_reader_catch_up__p(3000);
+})
+.then(() => {
+    logger.debug('all calls behaved as expected.');
 })
 .catch(err => {
     logger.error('CAUGHT UNHANDLED ERROR: ', err);
@@ -518,9 +665,9 @@ Promise.resolve()
 //////////////////////////////// START SERVER /////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-const server = http.createServer(app).listen(context.port, function(){});
+const server = http.createServer(app).listen(simple_client.appcfg.port, function(){});
 logger.info('****************** SERVER STARTED ************************');
-logger.info('**************  http://' + context.host + ':' + context.port + '  ******************');
+logger.info('**************  http://' + simple_client.appcfg.host + ':' + simple_client.appcfg.port + '  ******************');
 server.timeout = 240000;
 
 ///////////////////////////////////////////////////////////////////////////////
