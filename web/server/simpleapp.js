@@ -547,6 +547,23 @@ class SimpleClient {
         })
     }
 
+    // A convenient frontend to invoke__p which does a query; returns a promise for the query result.
+    // request must be a dict having the keys
+    // - channel_name
+    // - invoking_user_name
+    // - invoking_user_org_name
+    // - args (the first of which should be the function name)
+    query__p (request) {
+        const invoke_request = {
+            channel_name: request.channel_name,
+            invoking_user_name: request.invoking_user_name,
+            invoking_user_org_name: request.invoking_user_org_name,
+            args: request.args,
+            query_only: true
+        }
+        return this.invoke__p(invoke_request);
+    }
+
     // NOTE: Transactions (and other user-dependent actions) should call setUserContext before transacting.
 };
 
@@ -594,19 +611,17 @@ Promise.resolve()
 .then(() => {
     const channel_name = 'mychannel';
     return Promise.all([
-        simple_client.invoke__p({
+        simple_client.query__p({
             channel_name: channel_name,
             invoking_user_name: 'Admin', // TEMP HACK
             invoking_user_org_name: 'org0',
-            args: ['query', 'alice'],
-            query_only: true
+            args: ['query', 'alice']
         }),
-        simple_client.invoke__p({
+        simple_client.query__p({
             channel_name: channel_name,
             invoking_user_name: 'Admin', // TEMP HACK
             invoking_user_org_name: 'org0',
-            args: ['query', 'bob'],
-            query_only: true
+            args: ['query', 'bob']
         })
     ]);
 })
@@ -631,19 +646,17 @@ Promise.resolve()
 .then(() => {
     const channel_name = 'mychannel';
     return Promise.all([
-        simple_client.invoke__p({
+        simple_client.query__p({
             channel_name: channel_name,
             invoking_user_name: 'Admin', // TEMP HACK
             invoking_user_org_name: 'org0',
-            args: ['query', 'alice'],
-            query_only: true
+            args: ['query', 'alice']
         }),
-        simple_client.invoke__p({
+        simple_client.query__p({
             channel_name: channel_name,
             invoking_user_name: 'Admin', // TEMP HACK
             invoking_user_org_name: 'org0',
-            args: ['query', 'bob'],
-            query_only: true
+            args: ['query', 'bob']
         })
     ]);
 })
