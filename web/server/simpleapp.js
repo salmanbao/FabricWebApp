@@ -638,12 +638,18 @@ class SimpleClient {
 
 const simple_client = new SimpleClient();
 
-function let_the_human_reader_catch_up__p (delay_milliseconds) {
+function sleep__p (delay_milliseconds) {
     for (let i = 0; i < 10; i++) {
         logger.debug('---------------------------------------------------------------------------');
     }
-    logger.debug('-- pausing for %d ms to let the human reader catch up ------------------', delay_milliseconds);
-    return sleep(delay_milliseconds);
+    logger.debug('-- BEGIN sleeping for %d ms', delay_milliseconds);
+    return sleep(delay_milliseconds)
+    .then(() => {
+        logger.debug('-- DONE sleeping for %d ms', delay_milliseconds);
+        for (let i = 0; i < 10; i++) {
+            logger.debug('---------------------------------------------------------------------------');
+        }
+    });
 }
 
 Promise.resolve()
@@ -651,31 +657,26 @@ Promise.resolve()
     return simple_client.create_kvs_for_each_org__p()
 })
 .then(() => {
-    return let_the_human_reader_catch_up__p(1000)
-})
-.then(() => {
     return simple_client.enroll_all_users_for_each_org__p()
-})
-.then(() => {
-    return let_the_human_reader_catch_up__p(1000)
 })
 .then(() => {
     return simple_client.create_channels__p()
 })
 .then(() => {
-    return let_the_human_reader_catch_up__p(1000)
+    // This wait appears to be necessary -- is there some event that must be listened for
+    // in order to wait for channel creation to complete?  Why doesn't it do that already?
+    return sleep__p(1000)
 })
 .then(() => {
     return simple_client.join_channels__p()
 })
 .then(() => {
-    return let_the_human_reader_catch_up__p(1000)
-})
-.then(() => {
     return simple_client.install_and_instantiate_chaincode__p()
 })
 .then(() => {
-    return let_the_human_reader_catch_up__p(5000)
+    // This wait appears to be necessary -- is there some event that must be listened for
+    // in order to wait for install/instantiate to complete?  Why doesn't it do that already?
+    return sleep__p(5000)
 })
 .then(() => {
     const channel_name = 'mychannel';
