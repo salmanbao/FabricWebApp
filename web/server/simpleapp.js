@@ -5,6 +5,7 @@ const app = express();
 
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const EventHub = require('fabric-client/lib/EventHub.js'); // TEMP -- shouldn't have to require source internal to a module
 const FabricCAServices = require('fabric-ca-client');
 const FabricClient = require('fabric-client');
 const FabricClientUtils = require('fabric-client/lib/utils.js');
@@ -116,7 +117,7 @@ class SimpleClient {
                 );
             }
 
-            // Add the peers.
+            // Add the peers and eventhubs
             org.peers = {};
             for (const peer_name in org_cfg.peers) {
                 const peer_cfg          = org_cfg.peers[peer_name];
@@ -131,6 +132,7 @@ class SimpleClient {
                     }
                 );
 //                 chain.addPeer(peer); // TODO: add the peer to chain in a separate pass -- the application defines the chain/channel
+
                 org.peers[peer_name] = peer;
             }
 
@@ -483,16 +485,19 @@ class SimpleClient {
         const query_only                    = request.query_only;
 
         const channel_cfg                   = this.appcfg.channels[channel_name];
-        const invoking_peer_org             = this.organizations[invoking_user_org_name];
-        const client                        = invoking_peer_org.client;
-        const channel                       = invoking_peer_org.channels[channel_name];
+        const invoking_user_org_cfg         = this.netcfg.organizations[invoking_user_org_name];
+        const invoking_user_org             = this.organizations[invoking_user_org_name];
+        const client                        = invoking_user_org.client;
+        const channel                       = invoking_user_org.channels[channel_name];
         const chain                         = channel.chain;
+
+        let txId;
 
         // TEMP HACK - just invoke using Admin account
         return client.getUserContext(invoking_user_name, true)
         .then(user => {
             const nonce = FabricClientUtils.getNonce();
-            const txId = FabricClient.buildTransactionID(nonce, user);
+            txId = FabricClient.buildTransactionID(nonce, user);
             logger.debug('    calling chain.sendTransactionProposal');
             return chain.sendTransactionProposal({
                 chaincodeId: channel_cfg.chaincode.id,
@@ -534,16 +539,80 @@ class SimpleClient {
                 // TODO: probably should return the payload itself
                 return payload_as_string;
             }
+
+            // In fabric-sdk-node v1.0.0-alpha2, there is no way to create an EventHub via Client
+            // or Chain like there should be, so we have to require the internal EventHub.js source
+            // directly and create it by hand.
+
+            // Create and connect to event hub after transaction proposal.  This is to be notified
+            // when the transaction is committed or rejected.
+            const eventhub = new EventHub(client);
+            // Arbitrarily choose the "first" peer to connect to
+            const peer_cfg = invoking_user_org_cfg.peers[Object.keys(invoking_user_org_cfg.peers)[0]];
+            const eventhub_url = assemble_url_from_remote(peer_cfg.events_remote);
+            logger.debug('Connecting the event hub: ', eventhub_url);
+            eventhub.setPeerAddr(
+                eventhub_url,
+                undefined // TEMP TLS is disabled for now
+            );
+            eventhub.connect();
+
+            const eventhub_txId = txId.toString();
+            // Set up event hub to listen for this transaction
+            const eventhub_promise = new Promise(function(resolve, reject) {
+                const timeout_handle = setTimeout(
+                    () => {
+                        logger.debug('eventhub %s timed out waiting for txId ', eventhub_url, txId);
+                        eventhub.unregisterTxEvent(eventhub_txId);
+                        logger.debug('disconnecting eventhub %s', eventhub_url);
+                        eventhub.disconnect();
+                        reject(new Error('eventhub ' + eventhub_url + ' timed out waiting for txId ' + eventhub_txId));
+                    },
+                    30000
+                );
+                logger.debug('registering eventhub %s to listen for transaction ', eventhub_url, txId);
+
+                eventhub.registerTxEvent(eventhub_txId, function(txid, code) {
+                    logger.debug('from eventhub %s : event %j received; code: %j', eventhub_url, txid, code);
+                    clearTimeout(timeout_handle);
+                    eventhub.unregisterTxEvent(txid);
+                    logger.debug('disconnecting eventhub %s', eventhub_url);
+                    eventhub.disconnect();
+
+                    if (code !== 'VALID') {
+                        return reject(new Error('Transaction failure reported by eventhub ' + eventhub_url + ' for txId ' + eventhub_txId + '; code: ' + code));
+                    } else {
+                        return resolve({status: code});
+                    }
+                });
+            });
+
             logger.debug('calling chain.sendTransaction on for sendTransactionProposal responses');
-            return chain.sendTransaction({
+            const transaction_promise = chain.sendTransaction({
                 proposalResponses: proposal_responses,
                 proposal: proposal,
                 header: header
             })
             .then(result => {
-                logger.debug('successfully sent transaction; result: %j', result);
+                logger.debug('sendTransaction promise resolved; result: ', result);
                 return result;
+            })
+            .catch(err => {
+                logger.debug('caught error during invoke__p(); err: ', err);
+                logger.debug('disconnecting eventhub %s', eventhub_url);
+                eventhub.disconnect();
+                throw err;
             });
+
+            // TODO: Maybe return the promises separately, so that the user has more control
+            return Promise.all([
+                transaction_promise,
+                eventhub_promise
+            ])
+            .then((sendTransaction_result, transaction_result) => {
+                logger.debug('successfully received sendTransaction result %j and eventhub notification of transaction completion with result %j', sendTransaction_result, transaction_result);
+                return transaction_result;
+            })
         })
     }
 
