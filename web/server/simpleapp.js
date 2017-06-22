@@ -697,7 +697,6 @@ Promise.resolve()
 .then(balances => {
     logger.debug('balances = %j', balances);
     assert(balances[0] == '123' && balances[1] == '456', 'got incorrect balances from queries');
-    return let_the_human_reader_catch_up__p(3000);
 })
 .then(() => {
     const channel_name = 'mychannel';
@@ -708,9 +707,6 @@ Promise.resolve()
         args: ['move', 'alice', 'bob', '20'],
         query_only: false
     });
-})
-.then(() => {
-    return let_the_human_reader_catch_up__p(5000)
 })
 .then(() => {
     const channel_name = 'mychannel';
@@ -732,7 +728,6 @@ Promise.resolve()
 .then(balances => {
     logger.debug('balances = %j', balances);
     assert(balances[0] == '103' && balances[1] == '476', 'got incorrect balances from queries');
-    return let_the_human_reader_catch_up__p(3000);
 })
 .then(() => {
     logger.debug('all calls behaved as expected.');
