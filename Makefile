@@ -54,3 +54,19 @@ rm-state-volumes:
 # Delete the node_modules dir, in case things get inexplicably screwy and you just feel like you have to nuke something.
 rm-node-modules:
 	docker volume rm fabricsamplewebapp_webserver_homedir_node_modules
+
+# Delete the containers and images created by the peers that run chaincode.  This will be necessary if the chaincode
+# is changed, because new docker images will have to be built with the new chaincode.  If the chaincode has not changed,
+# then this is not necessary.  The semicolons are to run the commands sequentially without heeding the exit code.  The
+# command `true` is called last so that the make rule is always considered to have succeeded.
+rm-chaincode-docker-resources:
+	docker rm dev-peer0.org0.example.com-mycc-v0 \
+	          dev-peer1.org0.example.com-mycc-v0 \
+	          dev-peer0.org1.example.com-mycc-v0 \
+	          dev-peer1.org1.example.com-mycc-v0; \
+	docker rmi dev-peer0.org0.example.com-mycc-v0 \
+	           dev-peer1.org0.example.com-mycc-v0 \
+	           dev-peer0.org1.example.com-mycc-v0 \
+	           dev-peer1.org1.example.com-mycc-v0; \
+	true
+
