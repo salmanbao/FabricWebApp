@@ -79,7 +79,16 @@ Promise.resolve()
     return simple_client.join_channels__p()
 })
 .then(() => {
-    return simple_client.install_and_instantiate_chaincode__p()
+    const channel_name = 'mychannel';
+    return simple_client.install_and_instantiate_chaincode_on_channel__p({
+        channel_name: channel_name,
+        invoking_user_name_for_org: { // TEMP HACK -- probably use channel joiner user
+            'org0': 'Admin',
+            'org1': 'Admin'
+        },
+        fcn: 'init',
+        args: ['alice', '123', 'bob', '456']
+    });
 })
 .then(() => {
     // This wait appears to be necessary -- is there some event that must be listened for

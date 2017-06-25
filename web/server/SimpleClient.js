@@ -319,6 +319,7 @@ class SimpleClient {
                         genesis_block_protobuf = genesis_block_protobuf_;
                         return client.getUserContext(participating_peer_org_cfg.channel_joiner_user_name, true)
                     })
+                    // TODO: probably just make a "channel admin" user that does channel joining and install/instantiate.
                     .then(channel_joiner_user => {
                         logger.debug('channel_joiner_user.getName():', channel_joiner_user.getName());
                         const nonce                 = FabricClientUtils.getNonce();
@@ -345,93 +346,96 @@ class SimpleClient {
         return Promise.all(promises);
     }
 
-    install_and_instantiate_chaincode__p () {
-        logger.debug('install_and_instantiate_chaincode__p();');
+    install_and_instantiate_chaincode_on_channel__p (request) {
+        logger.debug('install_and_instantiate_chaincode_on_channel__p(); request: ', request);
+
+        const channel_name                      = request.channel_name;
+        const invoking_user_name_for_org        = request.invoking_user_name_for_org;
+        const fcn                               = request.fcn;
+        const args                              = request.args;
+
+        const channel_cfg                       = this.appcfg.channels[channel_name];
+
         const promises = [];
-
-        for (const channel_name in this.appcfg.channels) {
-            const channel_cfg               = this.appcfg.channels[channel_name];
-            for (const participating_peer_org_name in channel_cfg.participating_peer_organizations) {
-                const participating_peer_org_cfg    = channel_cfg.participating_peer_organizations[participating_peer_org_name];
-                const participating_peer_org        = this.organizations[participating_peer_org_name];
-                const client                        = participating_peer_org.client;
-                const channel                       = participating_peer_org.channels[channel_name];
-                const chain                         = channel.chain;
-                const targets                       = [];
-                for (const participating_peer_name of participating_peer_org_cfg.peers) {
-                    targets.push(participating_peer_org.peers[participating_peer_name]);
-                }
-                logger.debug('targets for installChaincode:', targets);
-
-                promises.push(
-                    client.getUserContext("Admin", true)
-                    .then(admin_user => {
-                        const nonce = FabricClientUtils.getNonce();
-                        const txId = FabricClient.buildTransactionID(nonce, admin_user);
-                        return client.installChaincode({
-                            targets: targets,
-                            chaincodePath: channel_cfg.chaincode.path,
-                            chaincodeId: channel_cfg.chaincode.id,
-                            chaincodeVersion: channel_cfg.chaincode.version,
-                            txId: txId,
-                            nonce: nonce
-                        });
-                    })
-                    .then(result => {
-                        logger.debug('client.installChaincode call on peers of peer org "%s" returned', participating_peer_org_name);
-                        const proposal_responses = result[0];
-                        for (var i = 0; i < proposal_responses.length; i++) {
-                            if (proposal_responses[i] instanceof Error) {
-                                logger.debug('error received in client.installChaincode response:', proposal_responses[i]);
-                                throw new Error(proposal_responses[i]);
-                            }
-                        }
-                        logger.debug('installChaincode proposal response succeeded on peers of peer org "%s".', participating_peer_org_name);
-                        // This constant retrieving of user contexts is dumb and should be fixed
-                        return client.getUserContext("Admin", true);
-                    })
-                    .then(admin_user => {
-                        const nonce = FabricClientUtils.getNonce();
-                        const txId = FabricClient.buildTransactionID(nonce, admin_user);
-                        const fcn = 'init';
-                        const args = ['alice', '123', 'bob', '456'];
-                        logger.debug('calling chain.sendInstantiateProposal on peers of peer org "%s"; fcn = "%s", args = %j.', participating_peer_org_name, fcn, args);
-                        // TODO: specify unanimous endorsement policy
-                        return chain.sendInstantiateProposal({
-                            targets: targets,
-                            chaincodePath: channel_cfg.chaincode.path,
-                            chaincodeId: channel_cfg.chaincode.id,
-                            chaincodeVersion: channel_cfg.chaincode.version,
-                            fcn: fcn,
-                            args: args,
-                            chainId: channel_name,
-                            txId: txId,
-                            nonce: nonce
-                        })
-                    })
-                    .then(result => {
-                        logger.debug('call to chain.sendInstantiateProposal succeeded');
-                        const proposal_responses = result[0];
-                        const proposal = result[1];
-                        const header   = result[2];
-                        for (var i = 0; i < proposal_responses.length; i++) {
-                            if (proposal_responses[i] instanceof Error) {
-                                logger.debug('error received in chain.sendInstantiateProposal response:', proposal_responses[i]);
-                                throw new Error(proposal_responses[i]);
-                            }
-                        }
-                        logger.debug('calling chain.sendTransaction on for sendInstantiateProposal responses; peer org is "%s".', participating_peer_org_name);
-                        return chain.sendTransaction({
-                            proposalResponses: proposal_responses,
-                            proposal: proposal,
-                            header: header
-                        });
-                    })
-                    .then(result => {
-                        logger.debug('successfully sent transaction for sendInstantiateProposal; peer org is "%s"; result: %j', participating_peer_org_name, result);
-                    })
-                );
+        for (const participating_peer_org_name in channel_cfg.participating_peer_organizations) {
+            const participating_peer_org_cfg    = channel_cfg.participating_peer_organizations[participating_peer_org_name];
+            const participating_peer_org        = this.organizations[participating_peer_org_name];
+            const invoking_user_name            = invoking_user_name_for_org[participating_peer_org_name];
+            const client                        = participating_peer_org.client;
+            const channel                       = participating_peer_org.channels[channel_name];
+            const chain                         = channel.chain;
+            const targets                       = [];
+            for (const participating_peer_name of participating_peer_org_cfg.peers) {
+                targets.push(participating_peer_org.peers[participating_peer_name]);
             }
+            logger.debug('targets for installChaincode:', targets);
+
+            promises.push(
+                client.getUserContext(invoking_user_name, true)
+                .then(admin_user => {
+                    const nonce = FabricClientUtils.getNonce();
+                    const txId = FabricClient.buildTransactionID(nonce, admin_user);
+                    return client.installChaincode({
+                        targets: targets,
+                        chaincodePath: channel_cfg.chaincode.path,
+                        chaincodeId: channel_cfg.chaincode.id,
+                        chaincodeVersion: channel_cfg.chaincode.version,
+                        txId: txId,
+                        nonce: nonce
+                    });
+                })
+                .then(result => {
+                    logger.debug('client.installChaincode call on peers of peer org "%s" returned', participating_peer_org_name);
+                    const proposal_responses = result[0];
+                    for (var i = 0; i < proposal_responses.length; i++) {
+                        if (proposal_responses[i] instanceof Error) {
+                            logger.debug('error received in client.installChaincode response:', proposal_responses[i]);
+                            throw new Error(proposal_responses[i]);
+                        }
+                    }
+                    logger.debug('installChaincode proposal response succeeded on peers of peer org "%s".', participating_peer_org_name);
+                    // This constant retrieving of user contexts is dumb and should be fixed
+                    return client.getUserContext(invoking_user_name, true);
+                })
+                .then(admin_user => {
+                    const nonce = FabricClientUtils.getNonce();
+                    const txId = FabricClient.buildTransactionID(nonce, admin_user);
+                    logger.debug('calling chain.sendInstantiateProposal on peers of peer org "%s"; fcn = "%s", args = %j.', participating_peer_org_name, fcn, args);
+                    // TODO: specify unanimous endorsement policy
+                    return chain.sendInstantiateProposal({
+                        targets: targets,
+                        chaincodePath: channel_cfg.chaincode.path,
+                        chaincodeId: channel_cfg.chaincode.id,
+                        chaincodeVersion: channel_cfg.chaincode.version,
+                        fcn: fcn,
+                        args: args,
+                        chainId: channel_name,
+                        txId: txId,
+                        nonce: nonce
+                    })
+                })
+                .then(result => {
+                    logger.debug('call to chain.sendInstantiateProposal succeeded');
+                    const proposal_responses = result[0];
+                    const proposal = result[1];
+                    const header   = result[2];
+                    for (var i = 0; i < proposal_responses.length; i++) {
+                        if (proposal_responses[i] instanceof Error) {
+                            logger.debug('error received in chain.sendInstantiateProposal response:', proposal_responses[i]);
+                            throw new Error(proposal_responses[i]);
+                        }
+                    }
+                    logger.debug('calling chain.sendTransaction on for sendInstantiateProposal responses; peer org is "%s".', participating_peer_org_name);
+                    return chain.sendTransaction({
+                        proposalResponses: proposal_responses,
+                        proposal: proposal,
+                        header: header
+                    });
+                })
+                .then(result => {
+                    logger.debug('successfully sent transaction for sendInstantiateProposal; peer org is "%s"; result: %j', participating_peer_org_name, result);
+                })
+            );
         }
         return Promise.all(promises);
     }
