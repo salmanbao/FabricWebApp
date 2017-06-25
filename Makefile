@@ -1,9 +1,9 @@
 # PHONY targets have no dependencies and they will be built unconditionally.
-.PHONY: all-generated-artifacts clean-generated-artifacts up up-detached logs-follow down down-full rm-state-volumes rm-node-modules rm-chaincode-docker-resources
+.PHONY: all-generated-artifacts rm-generated-artifacts up up-detached logs-follow down down-full rm-state-volumes rm-node-modules rm-chaincode-docker-resources
 
 all-generated-artifacts: generated-artifacts/crypto-config generated-artifacts/mychannel.tx generated-artifacts/orderer.genesis.block
 
-clean-generated-artifacts:
+rm-generated-artifacts:
 	rm generated-artifacts -rf
 
 generated-artifacts/crypto-config: source-artifacts/crypto-config.yaml

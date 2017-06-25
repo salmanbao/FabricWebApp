@@ -50,7 +50,7 @@ easier.
 
 -   The command
 
-        make clean-generated-artifacts
+        make rm-generated-artifacts
 
     will delete all generated artifacts.  In particular, it will delete the entire `generated-artifacts` directory.
 
@@ -137,7 +137,7 @@ easier.
     The solution is to delete the cryptographic materials so they can be regenerated from scratch.  This can be done
     conveniently via the command
 
-        make clean-generated-artifacts
+        make rm-generated-artifacts
 
     No explicit command is necessary to regenerate them for running the docker-compose services, as the `make up` command
     will generate them automatically.  However, they can be generated via the command
