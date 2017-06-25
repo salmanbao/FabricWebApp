@@ -102,15 +102,15 @@ Promise.resolve()
             channel_name: channel_name,
             invoking_user_name: 'Admin', // TEMP HACK
             invoking_user_org_name: 'org0',
-            fcn: 'invoke', // TODO: Change this so 'query' is fcn
-            args: ['query', 'alice']
+            fcn: 'query',
+            args: ['alice']
         }),
         simple_client.query__p({
             channel_name: channel_name,
             invoking_user_name: 'Admin', // TEMP HACK
             invoking_user_org_name: 'org0',
-            fcn: 'invoke', // TODO: Change this so 'query' is fcn
-            args: ['query', 'bob']
+            fcn: 'query',
+            args: ['bob']
         })
     ]);
 })
@@ -124,8 +124,8 @@ Promise.resolve()
         channel_name: channel_name,
         invoking_user_name: 'Admin', // TEMP HACK
         invoking_user_org_name: 'org0',
-        fcn: 'invoke', // TODO: Change this so 'move' is fcn
-        args: ['move', 'alice', 'bob', '20'],
+        fcn: 'move',
+        args: ['alice', 'bob', '20'],
         query_only: false
     });
 })
@@ -136,15 +136,15 @@ Promise.resolve()
             channel_name: channel_name,
             invoking_user_name: 'Admin', // TEMP HACK
             invoking_user_org_name: 'org0',
-            fcn: 'invoke', // TODO: Change this so 'query' is fcn
-            args: ['query', 'alice']
+            fcn: 'query',
+            args: ['alice']
         }),
         simple_client.query__p({
             channel_name: channel_name,
             invoking_user_name: 'Admin', // TEMP HACK
             invoking_user_org_name: 'org0',
-            fcn: 'invoke', // TODO: Change this so 'query' is fcn
-            args: ['query', 'bob']
+            fcn: 'query',
+            args: ['bob']
         })
     ]);
 })

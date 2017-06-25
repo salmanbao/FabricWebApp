@@ -103,10 +103,6 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response  {
 
 }
 
-func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface) pb.Response {
-    return shim.Error("Unknown supported call")
-}
-
 // Transaction makes payment of X units from A to B
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
     fmt.Println("########### example_cc Invoke ###########")
@@ -114,24 +110,20 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
     fmt.Printf("within Invoke : GetCreatorCommonName(stub): %v\n", GetCreatorCommonName(stub))
 
-    if function != "invoke" {
-                return shim.Error("Unknown function call")
+    if len(args) < 1 {
+        return shim.Error("Incorrect number of arguments. Expecting at least 1")
     }
 
-    if len(args) < 2 {
-        return shim.Error("Incorrect number of arguments. Expecting at least 2")
-    }
-
-    if args[0] == "delete" {
+    if function == "delete" {
         // Deletes an entity from its state
         return t.delete(stub, args)
     }
 
-    if args[0] == "query" {
+    if function == "query" {
         // queries an entity state
         return t.query(stub, args)
     }
-    if args[0] == "move" {
+    if function == "move" {
         // Deletes an entity from its state
         return t.move(stub, args)
     }
@@ -145,12 +137,16 @@ func (t *SimpleChaincode) move(stub shim.ChaincodeStubInterface, args []string) 
     var X int          // Transaction value
     var err error
 
-    if len(args) != 4 {
-        return shim.Error("Incorrect number of arguments. Expecting 4, function followed by 2 names and 1 value")
+    if len(args) != 3 {
+        return shim.Error("Incorrect number of arguments. Expecting 3; 2 names and 1 value")
     }
 
-    A = args[1]
-    B = args[2]
+    A = args[0]
+    B = args[1]
+    X, err = strconv.Atoi(args[2])
+    if err != nil {
+        return shim.Error("Invalid transaction amount, expecting a integer value")
+    }
 
     // Get the state from the ledger
     // TODO: will be nice to have a GetAllState call to ledger
@@ -173,10 +169,6 @@ func (t *SimpleChaincode) move(stub shim.ChaincodeStubInterface, args []string) 
     Bval, _ = strconv.Atoi(string(Bvalbytes))
 
     // Perform the execution
-    X, err = strconv.Atoi(args[3])
-    if err != nil {
-        return shim.Error("Invalid transaction amount, expecting a integer value")
-    }
     Aval = Aval - X
     Bval = Bval + X
     fmt.Printf("Aval = %d, Bval = %d\n", Aval, Bval)
@@ -201,7 +193,7 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
         return shim.Error("Incorrect number of arguments. Expecting 1")
     }
 
-    A := args[1]
+    A := args[0]
 
     // Delete the key from the state in ledger
     err := stub.DelState(A)
@@ -218,11 +210,11 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
     var A string // Entities
     var err error
 
-    if len(args) != 2 {
+    if len(args) != 1 {
         return shim.Error("Incorrect number of arguments. Expecting name of the person to query")
     }
 
-    A = args[1]
+    A = args[0]
 
     // Get the state from the ledger
     Avalbytes, err := stub.GetState(A)
