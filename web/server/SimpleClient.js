@@ -456,6 +456,7 @@ class SimpleClient {
         const channel_name                  = request.channel_name;
         const invoking_user_name            = request.invoking_user_name;
         const invoking_user_org_name        = request.invoking_user_org_name;
+        const fcn                           = request.fcn;
         const args                          = request.args;
         const query_only                    = request.query_only;
 
@@ -479,6 +480,7 @@ class SimpleClient {
                 chainId: channel_name,
                 txId: txId,
                 nonce: nonce,
+                fcn: fcn,
                 args: args
             })
         })
@@ -596,12 +598,14 @@ class SimpleClient {
     // - channel_name
     // - invoking_user_name
     // - invoking_user_org_name
-    // - args (the first of which should be the function name)
+    // - fcn
+    // - args
     query__p (request) {
         const invoke_request = {
             channel_name: request.channel_name,
             invoking_user_name: request.invoking_user_name,
             invoking_user_org_name: request.invoking_user_org_name,
+            fcn: request.fcn,
             args: request.args,
             query_only: true
         }
