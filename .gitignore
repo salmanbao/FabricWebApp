@@ -1,3 +1,5 @@
+generated-artifacts
 node_modules
 npm-debug.log
+*.kate-swp
 
