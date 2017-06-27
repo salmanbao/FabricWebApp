@@ -150,7 +150,7 @@ services:
 
   webserver:
     container_name: www.example.com
-    image: fabricsamplewebapp_webserver-env:v0.0
+    image: ${COMPOSE_PROJECT_NAME}_webserver-env:v0.0
     build:
       context: .
       dockerfile: docker/webserver-env:v0.0.Dockerfile
@@ -162,9 +162,9 @@ services:
       - 'HFC_LOGGING={"$GENERAL_LOGGING_LEVEL":"console"}'
     command: |
       bash -x -c "
-        cp Fabric_SampleWebApp/web/server/package.json . && \
+        cp ${COMPOSE_PROJECT_NAME}/web/server/package.json . && \
         npm install && \
-        cd Fabric_SampleWebApp/web/server && \
+        cd ${COMPOSE_PROJECT_NAME}/web/server && \
         npm start
       "
     ports:
@@ -177,7 +177,7 @@ services:
       # This is to contain and persist node_modules
       - webserver_homedir_node_modules:/home/minion/node_modules:rw
       # Mount this project's files.  TODO: Mount only the minimal necessary files (move necessary certs to under web/server)
-      - .:/home/minion/Fabric_SampleWebApp:ro
+      - .:/home/minion/${COMPOSE_PROJECT_NAME}:ro
     depends_on:
       - ca.org0.example.com
       - ca.org1.example.com

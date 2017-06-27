@@ -1,12 +1,13 @@
-# Hyperledger Fabric Example App using node.js SDK
+# Hyperledger Fabric App using node.js SDK
 
-This was originally a fork of https://github.com/ratnakar-asara/Fabric_SampleWebApp
+This was originally a fork of https://github.com/ratnakar-asara/Fabric_SampleWebApp but has diverged quite
+a bit since then.
 
 ## Instructions
 
 Clone this repo with the following command.
 
-    git clone https://github.com/vdods/Fabric_SampleWebApp.git
+    git clone https://github.com/vdods/FabricWebApp.git
 
 In one terminal, generate all configuration and cryptographic artifacts, spin up the peer network, orderer,
 certificate authorities, and web server (which hosts the web app) with the following command.  See `Makefile`
@@ -56,12 +57,12 @@ easier.
     ensures that all necessary artifacts are generated (into the `generated-artifacts` subdir), and creates and starts all
     services, volumes, and networks and prints all services' logs to the console.  Hitting Ctrl+C in this mode
     will stop all services.  If any container exits, all will exit.  There are three volumes:
-    -   `fabricsamplewebapp_webserver_homedir` : Stores the home directory of the user that runs the web server.  In particular, this
+    -   `fabricwebapp_webserver_homedir` : Stores the home directory of the user that runs the web server.  In particular, this
         stores the `~/.hfc-key-store` directory.
-    -   `fabricsamplewebapp_webserver_homedir_node_modules` : Stores the `node_modules` directory for the web server.  This will really
+    -   `fabricwebapp_webserver_homedir_node_modules` : Stores the `node_modules` directory for the web server.  This will really
         only be populated once and won't need updating often, nor does it typically need to be deleted before restarting the
         web server.
-    -   `fabricsamplewebapp_webserver_tmp` : Stores the key/value store for each organization in the network.
+    -   `fabricwebapp_webserver_tmp` : Stores the key/value store for each organization in the network.
 
 -   The command
 
@@ -96,7 +97,7 @@ easier.
 
     is a convenient single command you can use after stopping services to reset all services back to a clean state
     and restart them, following the services' logs.  There is typically no need to delete the persistent `node_modules`
-    directory (contained within the fabricsamplewebapp_webserver_homedir_node_modules docker volume and deleted by the
+    directory (contained within the fabricwebapp_webserver_homedir_node_modules docker volume and deleted by the
     `make rm-node-modules` command) because it is not likely to qualitatively change or be corrupted (though that does
     happen sometimes during development for various reasons).  Note that the web server service in `docker-compose.yaml`
     does execute the command `npm install`, so any updates to `web/server/package.json` should automatically take effect.
@@ -116,8 +117,8 @@ easier.
 
         make rm-state-volumes
 
-    deletes the persistent storage of the web server (in particular, the `fabricsamplewebapp_webserver_tmp` and
-    `fabricsamplewebapp_webserver_homedir` volumes), and can be used for example to reset the web server to a 'clean'
+    deletes the persistent storage of the web server (in particular, the `fabricwebapp_webserver_tmp` and
+    `fabricwebapp_webserver_homedir` volumes), and can be used for example to reset the web server to a 'clean'
     state, not having anything in the key/value store(s).  This can be executed only if the services are not up.
     WARNING: This will delete all of your webserver keystore data, and is IRREVERSIBLE!
 
@@ -125,7 +126,8 @@ easier.
 
         make rm-node-modules
 
-    deletes the node_modules directory of the web server (in particular, the `fabricsamplewebapp_webserver_homedir_node_modules` volume).  This can be executed only if the services are not up.  This does not delete any real data that can't
+    deletes the node_modules directory of the web server (in particular, the `fabricwebapp_webserver_homedir_node_modules`
+    volume).  This can be executed only if the services are not up.  This does not delete any real data that can't
     be easily recreated, though it may involve downloading a lot of node.js dependencies.
 
 -   The command

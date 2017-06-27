@@ -130,7 +130,7 @@ class SimpleClient {
                 const channel                       = {};
                 const chain                         = client.newChain(channel_name);
 
-                logger.debug('created chain:', chain);
+                logger.debug('created chain with name:', chain._name);
                 channel.chain                       = chain;
 
                 // Add the participating orderer to the chain.

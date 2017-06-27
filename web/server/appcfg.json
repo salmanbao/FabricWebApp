@@ -2,8 +2,8 @@
     "host":"webserver",
     "port":"4000",
     "GOPATH":"../../chaincode/gopath",
-    "kvs_path_prefix":"/tmp/Fabric_SampleWebApp/kvs/organization/",
-    "cryptoSuite_path_prefix":"/tmp/Fabric_SampleWebApp/cryptoSuite/",
+    "kvs_path_prefix":"/tmp/FabricWebApp/kvs/organization/",
+    "cryptoSuite_path_prefix":"/tmp/FabricWebApp/cryptoSuite/",
     "eventWaitTime":"30000",
     "channels": {
         "mychannel": {

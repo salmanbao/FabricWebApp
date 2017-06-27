@@ -1,6 +1,10 @@
 # PHONY targets have no dependencies and they will be built unconditionally upon request.
 .PHONY: all-generated-artifacts up up-detached logs-follow down down-full rm-state-volumes rm-node-modules rm-generated-artifacts rm-webserver-env rm-chaincode-docker-resources clean
 
+# This is also hardcoded in .env, so if you change it here, you must change it there.  Note that
+# it must be in all-lowercase, as docker-compose changes it to lowercase anyway.
+COMPOSE_PROJECT_NAME := fabricwebapp
+
 # Default make rule
 all:
 	@echo "See README.md for info on make targets."
@@ -57,20 +61,20 @@ show-all-generated-resources:
 	@echo ""
 	docker ps -a | grep example.com || true
 	@echo ""
-	docker volume ls | grep fabricsamplewebapp || true
+	docker volume ls | grep $(COMPOSE_PROJECT_NAME) || true
 	@echo ""
-	docker images | grep -E "fabricsamplewebapp|example.com" || true
+	docker images | grep -E "$(COMPOSE_PROJECT_NAME)|example.com" || true
 
 # Delete the "state" volumes -- tmp dir (which contains the webserver's key store) and HFC key/value store in
 # home dir This can be done after `make down` to reset things to a "clean state", without needing to recompile go code or
 # run `npm install` from scratch.  The shell "or" with `true` is so this command never fails.
 rm-state-volumes:
-	docker volume rm fabricsamplewebapp_webserver_tmp fabricsamplewebapp_webserver_homedir || true
+	docker volume rm $(COMPOSE_PROJECT_NAME)_webserver_tmp $(COMPOSE_PROJECT_NAME)_webserver_homedir || true
 
 # Delete the node_modules dir, in case things get inexplicably screwy and you just feel like you have to nuke something.
 # The shell "or" with `true` is so this command never fails.
 rm-node-modules:
-	docker volume rm fabricsamplewebapp_webserver_homedir_node_modules || true
+	docker volume rm $(COMPOSE_PROJECT_NAME)_webserver_homedir_node_modules || true
 
 # Delete the generated-artifacts dir.  The shell "or" with `true` is so this command never fails.
 rm-generated-artifacts:
@@ -78,7 +82,7 @@ rm-generated-artifacts:
 
 # Delete the docker image that the webserver uses.  The shell "or" with `true` is so this command never fails.
 rm-webserver-env:
-	docker rmi fabricsamplewebapp_webserver-env:v0.0 || true
+	docker rmi $(COMPOSE_PROJECT_NAME)_webserver-env:v0.0 || true
 
 # Delete the containers and images created by the peers that run chaincode.  This will be necessary if the chaincode
 # is changed, because new docker images will have to be built with the new chaincode.  If the chaincode has not changed,

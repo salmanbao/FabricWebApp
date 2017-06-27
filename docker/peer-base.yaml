@@ -24,11 +24,9 @@ services:
       # the following setting starts chaincode containers on the same
       # bridge network as the peers -- NOTE: This has to match the network name printed
       # when `docker-compose up` is run; e.g.
-      #     Creating network "fabricsamplewebapp_default" with the default driver
+      #     Creating network "FabricWebApp_default" with the default driver
       # See https://docs.docker.com/compose/networking/
-      # Note that the "fabricsamplewebapp" prefix on "fabricsamplewebapp_default" comes from the directory that
-      # docker-compose.yaml resides in.
-      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=fabricsamplewebapp_default
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_default
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: peer node start --peer-defaultchain=false
