@@ -1,11 +1,14 @@
-# PHONY targets have no dependencies and they will be built unconditionally.
-.PHONY: all-generated-artifacts rm-generated-artifacts up up-detached logs-follow down down-full rm-state-volumes rm-node-modules rm-chaincode-docker-resources
+# PHONY targets have no dependencies and they will be built unconditionally upon request.
+.PHONY: all-generated-artifacts up up-detached logs-follow down down-full rm-state-volumes rm-node-modules rm-generated-artifacts rm-webserver-env rm-chaincode-docker-resources clean
 
+# Default make rule
+all:
+	@echo "See README.md for info on make targets."
+
+# Creates everything under the generated-artifacts directory.
 all-generated-artifacts: generated-artifacts/crypto-config generated-artifacts/mychannel.tx generated-artifacts/orderer.genesis.block
 
-rm-generated-artifacts:
-	rm generated-artifacts -rf
-
+# Creates everything under the generated-artifacts/crypto-config directory (all cryptographic materials)
 generated-artifacts/crypto-config: source-artifacts/crypto-config.yaml
 	mkdir -p generated-artifacts
 	$(GOPATH)/src/github.com/hyperledger/fabric/build/bin/cryptogen generate --output=generated-artifacts/crypto-config --config=source-artifacts/crypto-config.yaml
@@ -17,10 +20,12 @@ generated-artifacts/crypto-config: source-artifacts/crypto-config.yaml
 	mkdir -p generated-artifacts/crypto-config/peerOrganizations/org1.example.com/msp/intermediatecerts
 	mkdir -p generated-artifacts/crypto-config/peerOrganizations/org1.example.com/msp/crls
 
+# Creates the generated-artifacts/mychannel.tx file (channel configuration transaction)
 generated-artifacts/mychannel.tx: source-artifacts/configtx.yaml generated-artifacts/crypto-config
 	mkdir -p generated-artifacts
 	cd source-artifacts && $(GOPATH)/src/github.com/hyperledger/fabric/build/bin/configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ../generated-artifacts/mychannel.tx -channelID mychannel
 
+# Creates the generated-artifacts/orderer.genesis.block file (the first block in the chain; contains configuration data)
 generated-artifacts/orderer.genesis.block: source-artifacts/configtx.yaml generated-artifacts/crypto-config
 	mkdir -p generated-artifacts
 	cd source-artifacts && $(GOPATH)/src/github.com/hyperledger/fabric/build/bin/configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ../generated-artifacts/orderer.genesis.block
@@ -45,15 +50,35 @@ down:
 down-full:
 	docker-compose down -v
 
-# Delete the "state" volumes -- tmp dir (which contains the webserver's key store) and HFC key/value store in home dir
-# This can be done after `make down` to reset things to a "clean state", without needing to recompile go code or
-# run `npm install` from scratch.
+# Shows all non-source resources that this project created that currently still exist.
+# The shell "or" with `true` is so we don't receive the error code that find/grep produces when there are no matches.
+show-all-generated-resources:
+	find generated-artifacts || true
+	@echo ""
+	docker ps -a | grep example.com || true
+	@echo ""
+	docker volume ls | grep fabricsamplewebapp || true
+	@echo ""
+	docker images | grep -E "fabricsamplewebapp|example.com" || true
+
+# Delete the "state" volumes -- tmp dir (which contains the webserver's key store) and HFC key/value store in
+# home dir This can be done after `make down` to reset things to a "clean state", without needing to recompile go code or
+# run `npm install` from scratch.  The shell "or" with `true` is so this command never fails.
 rm-state-volumes:
-	docker volume rm fabricsamplewebapp_webserver_tmp fabricsamplewebapp_webserver_homedir
+	docker volume rm fabricsamplewebapp_webserver_tmp fabricsamplewebapp_webserver_homedir || true
 
 # Delete the node_modules dir, in case things get inexplicably screwy and you just feel like you have to nuke something.
+# The shell "or" with `true` is so this command never fails.
 rm-node-modules:
-	docker volume rm fabricsamplewebapp_webserver_homedir_node_modules
+	docker volume rm fabricsamplewebapp_webserver_homedir_node_modules || true
+
+# Delete the generated-artifacts dir.  The shell "or" with `true` is so this command never fails.
+rm-generated-artifacts:
+	rm generated-artifacts -rf || true
+
+# Delete the docker image that the webserver uses.  The shell "or" with `true` is so this command never fails.
+rm-webserver-env:
+	docker rmi fabricsamplewebapp_webserver-env:v0.0 || true
 
 # Delete the containers and images created by the peers that run chaincode.  This will be necessary if the chaincode
 # is changed, because new docker images will have to be built with the new chaincode.  If the chaincode has not changed,
@@ -69,3 +94,13 @@ rm-chaincode-docker-resources:
 	           dev-peer0.org1.example.com-mycc-v0 \
 	           dev-peer1.org1.example.com-mycc-v0; \
 	true
+
+# Deletes all non-source resources that this project created that currently still exist.  This should
+# reset the project back to a "clean" state.
+rm-all-generated-resources:
+	$(MAKE) down
+	$(MAKE) rm-state-volumes rm-node-modules rm-generated-artifacts rm-chaincode-docker-resources
+	$(MAKE) rm-webserver-env
+
+# Alias for rm-all-generated-resources.
+clean: rm-all-generated-resources

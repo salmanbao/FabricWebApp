@@ -34,6 +34,7 @@ import (
     mspprotos "github.com/hyperledger/fabric/protos/msp"
 )
 
+// This code came from advice from Gari Singh
 func GetCreatorCert (stub shim.ChaincodeStubInterface) (*x509.Certificate, error) {
     creator, err := stub.GetCreator()
     if err != nil {
