@@ -2,7 +2,7 @@ version: '2'
 services:
 
   ca-base:
-    image: hyperledger/fabric-ca:x86_64-1.0.0-alpha2
+    image: hyperledger/fabric-ca:x86_64-1.0.0
     environment:
       # TODO: change to /var/hyperledger (?)
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
