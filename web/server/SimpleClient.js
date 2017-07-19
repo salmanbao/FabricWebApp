@@ -232,6 +232,72 @@ class SimpleClient {
 //         return current_promise;
     }
 
+    // NOTE: Must have already successfully enrolled the specified registrar for this org.
+    // Can specify undefined for enrollment_secret to have the CA generate one for you.
+    register_user_in_org__p (user_name, enrollment_secret, role_string, org_name, registrar_name) {
+        const org       = this.organizations[org_name];
+        const org_cfg   = this.netcfg.organizations[org_name];
+
+        logger.debug('register_user_in_org__p(); user_name = "%s", role_string = "%s", org_name = "%s", registrar_name = "%s"', user_name, role_string, org_name, registrar_name);
+        return org.client.getUserContext(registrar_name, true)
+        .then(registrar => {
+            logger.debug('    successfully got user context for registrar "%s"; calling ca.register.', registrar_name);
+            return org.ca.register(
+                {
+                    enrollmentID: user_name,
+                    enrollmentSecret: enrollment_secret,
+                    role: role_string,
+//                     affiliation: org_name, // TODO: Is this sufficient/correct?
+//                     affiliation: org_cfg.mspid, // TODO: Is this sufficient/correct?
+                    affiliation: org_name+'_affiliation', // NOTE: For now, use a distinct string to see if there's a problem
+                    maxEnrollments: 0, // no limit to number of enrollments
+                    attrs: [] // NOTE: This is not used by fabric-sdk-node yet!
+                },
+                registrar
+            );
+        })
+        .then(returned_enrollment_secret => {
+            logger.debug('    successfully registered user "%s" within org "%s".', user_name, org_name);
+            if (enrollment_secret) {
+                assert(returned_enrollment_secret === enrollment_secret, 'enrollment secret returned from ca.register did not match provided one.');
+            }
+            return returned_enrollment_secret;
+        });
+    }
+
+    enroll_user_in_org__p (user_name, enrollment_secret, org_name) {
+        const org       = this.organizations[org_name];
+        const org_cfg   = this.netcfg.organizations[org_name];
+
+        logger.debug('enroll_user_in_org__p(); user_name = "%s", org_name = "%s"', user_name, org_name);
+        return org.ca.enroll({
+            enrollmentID: user_name,
+            enrollmentSecret: enrollment_secret
+        })
+        .then(results => {
+            logger.debug('    successfully enrolled user "%s" in org "%s"; saving user to client object by calling client.createUser', user_name, org_name);
+            return org.client.createUser({
+                username: user_name,
+                mspid: org_cfg.mspid,
+                cryptoContent: {
+                    signedCertPEM: results.certificate,
+                    privateKeyPEM: results.key.toBytes()
+                }
+            });
+        })
+        .then(user => {
+            logger.debug('    create user "%s" in org "%s" finished successfully.', user_name, org_name);
+            return user;
+        });
+    }
+
+    register_and_enroll_user_in_org__p (user_name, enrollment_secret, role_string, org_name, registrar_name) {
+        return this.register_user_in_org__p(user_name, enrollment_secret, role_string, org_name, registrar_name)
+        .then(returned_enrollment_secret => {
+            return this.enroll_user_in_org__p(user_name, returned_enrollment_secret);
+        })
+    }
+
     create_channels__p () {
         logger.info('create_channels__p();');
         const promises = [];

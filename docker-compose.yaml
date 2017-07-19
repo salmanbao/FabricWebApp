@@ -4,6 +4,8 @@ volumes:
   webserver_homedir:
   webserver_homedir_node_modules:
   webserver_tmp:
+  ca_org0_volume:
+  ca_org1_volume:
 
 services:
 
@@ -13,9 +15,12 @@ services:
       file: docker/ca-base.yaml
       service: ca-base
     volumes:
-      - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/:/etc/hyperledger/fabric-ca-server-config:ro
-      # TODO: create persistent volume to be mounted at /etc/hyperledger/fabric-ca-server
-      # QUESTION: should this be /var/hyperledger/fabric-ca-server, since its contents are likely to vary?
+      # This is the persistent storage volume for the CA.
+      - ca_org0_volume:/var/hyperledger/fabric-ca-server:rw
+      # This is the directory that contains the pre-loaded keys for the CA.
+      - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/:/etc/hyperledger/fabric-ca-server:ro
+      # This is the CA configuration file.
+      - ./source-artifacts/ca.org0.example.com/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml:ro
     # This is not necessary -- just a little self-documenting hint that this service is being offered on port 7054
     ports:
       - 7054:7054
@@ -26,9 +31,12 @@ services:
       file: docker/ca-base.yaml
       service: ca-base
     volumes:
-      - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server-config:ro
-      # TODO: create persistent volume to be mounted at /etc/hyperledger/fabric-ca-server
-      # QUESTION: should this be /var/hyperledger/fabric-ca-server, since its contents are likely to vary?
+      # This is the persistent storage volume for the CA.
+      - ca_org1_volume:/var/hyperledger/fabric-ca-server:rw
+      # This is the directory that contains the pre-loaded keys for the CA.
+      - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server:ro
+      # This is the CA configuration file.
+      - ./source-artifacts/ca.org1.example.com/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml:ro
     # This is really only necessary if you want to access this service from the host.
     # Configurations within these docker-compose services should just use the native port 7054 (since
     # each service has its own IP address).  In particular, within the docker services, this

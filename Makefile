@@ -69,7 +69,7 @@ show-all-generated-resources:
 # home dir This can be done after `make down` to reset things to a "clean state", without needing to recompile go code or
 # run `npm install` from scratch.  The shell "or" with `true` is so this command never fails.
 rm-state-volumes:
-	docker volume rm $(COMPOSE_PROJECT_NAME)_webserver_tmp $(COMPOSE_PROJECT_NAME)_webserver_homedir || true
+	docker volume rm $(COMPOSE_PROJECT_NAME)_webserver_tmp $(COMPOSE_PROJECT_NAME)_webserver_homedir $(COMPOSE_PROJECT_NAME)_ca_org0_volume $(COMPOSE_PROJECT_NAME)_ca_org1_volume || true
 
 # Delete the node_modules dir, in case things get inexplicably screwy and you just feel like you have to nuke something.
 # The shell "or" with `true` is so this command never fails.
