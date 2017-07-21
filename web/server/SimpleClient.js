@@ -61,8 +61,11 @@ class SimpleClient {
                 const ca_cfg            = org_cfg.ca;
                 logger.info('creating CA using cfg %j', ca_cfg);
                 const cryptoSuite_path  = appcfg.cryptoSuite_path_prefix + org_name;
-                const cryptoSuite       = client.newCryptoSuite({
-                    path: cryptoSuite_path
+                const cryptoSuite       = FabricClient.newCryptoSuite({
+                    software    : true,
+//                     keysize     : // This may be optional as well.  TODO: Specify in appcfg, or perhaps this is tied to the generated crypto materials.
+                    algorithm   : 'EC', // Docs say (as of v1.0.0 this is the only supported value)
+                    hash        : 'SHA3' // Does this need to match some external thing?
                 });
                 org.ca = new FabricCAServices(
                     assemble_url_from_remote(ca_cfg.remote),
@@ -102,7 +105,6 @@ class SimpleClient {
                         'request-timeout'         : 120000 // NOTE: This is probably excessive, but for now use it.
                     }
                 );
-//                 chain.addPeer(peer); // TODO: add the peer to chain in a separate pass -- the application defines the chain/channel
 
                 org.peers[peer_name] = peer;
             }
@@ -127,13 +129,11 @@ class SimpleClient {
                 const participating_peer_org_cfg    = channel_cfg.participating_peer_organizations[participating_peer_org_name];
                 const participating_peer_org        = this.organizations[participating_peer_org_name];
                 const client                        = participating_peer_org.client;
-                const channel                       = {};
-                const chain                         = client.newChain(channel_name);
+                const channel                       = client.newChannel(channel_name);
 
-                logger.info('created chain with name:', chain._name);
-                channel.chain                       = chain;
+                logger.info('created channel with name:', channel.getName());
 
-                // Add the participating orderer to the chain.
+                // Add the participating orderer to the channel.
                 {
                     const participating_orderer_org_names   = Object.keys(channel_cfg.participating_orderer_organizations)
                     assert(participating_orderer_org_names.length == 1, 'must specify exactly one element in the participating_orderer_organizations attribute of each channel in appcfg.json (for now -- this is a temporary limitation)');
@@ -143,13 +143,13 @@ class SimpleClient {
                     assert(participating_orderer_org_cfg.length == 1, 'must specify exactly one element in the single participating orderer org entry for each channel in appcfg.json (for now -- this is a temporary limitation)');
                     const participating_orderer_name        = participating_orderer_org_cfg[0];
                     logger.info('for channel "%s", adding orderer "%s" from organization "%s"', channel_name, participating_orderer_name, participating_orderer_org_name);
-                    chain.addOrderer(participating_orderer_org.orderers[participating_orderer_name]);
+                    channel.addOrderer(participating_orderer_org.orderers[participating_orderer_name]);
                 }
 
-                // Add the participating org's peers to the chain
+                // Add the participating org's peers to the channel
                 for (const participating_peer_name of participating_peer_org_cfg.peers) {
                     logger.info('for channel "%s", adding peer "%s" from organization "%s"', channel_name, participating_peer_name, participating_peer_org_name);
-                    chain.addPeer(participating_peer_org.peers[participating_peer_name]);
+                    channel.addPeer(participating_peer_org.peers[participating_peer_name]);
                 }
 
                 participating_peer_org.channels[channel_name] = channel;
@@ -299,40 +299,51 @@ class SimpleClient {
     }
 
     create_channels__p () {
+        // TODO: Pass in the channel configuration instead of reading it from this.appcfg and this.netcfg
         logger.info('create_channels__p();');
         const promises = [];
         for (const channel_name in this.appcfg.channels) {
             const channel_cfg               = this.appcfg.channels[channel_name];
             logger.info('attempting to read config of channel "%s"; config is %j', channel_name, channel_cfg);
-            const channel_creator_org       = this.organizations[channel_cfg.channel_creator_spec.organization_name];
+            const channel_creator_org_name  = channel_cfg.channel_creator_spec.organization_name;
+            const channel_creator_org       = this.organizations[channel_creator_org_name];
             logger.info('channel_creator_org keys:', Object.keys(channel_creator_org));
             const channel_creator_client    = channel_creator_org.client;
             let channel_creator_user;
-            const channel                   = channel_creator_org.channels[channel_name];
-            const channel_orderers          = channel.chain.getOrderers();
-            assert(channel_orderers.length == 1, 'currently you may only specify one orderer per channel');
-            const channel_orderer           = channel_orderers[0];
+
+            let channel_orderer;
+            {
+                const participating_orderer_org_names   = Object.keys(channel_cfg.participating_orderer_organizations)
+                assert(participating_orderer_org_names.length == 1, 'must specify exactly one element in the participating_orderer_organizations attribute of each channel in appcfg.json (for now -- this is a temporary limitation)');
+                const participating_orderer_org_name    = participating_orderer_org_names[0];
+                const participating_orderer_org_cfg     = channel_cfg.participating_orderer_organizations[participating_orderer_org_name];
+                const participating_orderer_org         = this.organizations[participating_orderer_org_name];
+                assert(participating_orderer_org_cfg.length == 1, 'must specify exactly one element in the single participating orderer org entry for each channel in appcfg.json (for now -- this is a temporary limitation)');
+                const participating_orderer_name        = participating_orderer_org_cfg[0];
+                logger.info('for channel "%s", adding orderer "%s" from organization "%s"', channel_name, participating_orderer_name, participating_orderer_org_name);
+                channel_orderer = participating_orderer_org.orderers[participating_orderer_name];
+            }
+
             const configtx                  = fs.readFileSync(path.join(__dirname, channel_cfg.configtx_path));
             promises.push(
                 channel_creator_client.getUserContext(channel_cfg.channel_creator_spec.user_name, true)
                 .then((channel_creator_user_) => {
-                    channel_creator_user = channel_creator_user_;
                     const extracted_channel_config  = channel_creator_client.extractChannelConfig(configtx);
                     const signature                 = channel_creator_client.signChannelConfig(extracted_channel_config);
-                    const nonce                     = FabricClientUtils.getNonce();
-                    const txId                      = FabricClient.buildTransactionID(nonce, channel_creator_user);
-                    logger.info('creating channel "%s" using organization "%s"\'s client', channel_name, channel_creator_org);
+                    const txId                      = channel_creator_client.newTransactionID();
+                    logger.info('creating channel "%s" using organization "%s"\'s client', channel_name, channel_creator_org_name);
                     return channel_creator_client.createChannel({
                         name: channel_name,
                         orderer: channel_orderer,
                         config: extracted_channel_config,
                         signatures: [signature],
-                        txId: txId,
-                        nonce: nonce
+                        txId: txId
                     });
                 })
                 .then(result => {
-                    logger.info('    successfully created channel "%s" using organization "%s"\'s client; result: %j', channel_name, channel_creator_org, result);
+                    // NOTE: The SDK docs say this resolution doesn't indicate the success of channel creation,
+                    // that has to be polled for separately.
+                    logger.info('    call to createChannel succeeded; channel is "%s", created using organization "%s"\'s client; result: %j', channel_name, channel_creator_org_name, result);
                 })
             );
         }
@@ -359,25 +370,22 @@ class SimpleClient {
                 const client                        = participating_peer_org.client;
                 const channel                       = participating_peer_org.channels[channel_name];
                 let genesis_block_protobuf;
-                const chain                         = channel.chain;
                 const targets                       = [];
                 for (const participating_peer_name of participating_peer_org_cfg.peers) {
                     targets.push(participating_peer_org.peers[participating_peer_name]);
                 }
                 logger.info('targets for joinChannel:', targets);
 
-                // NOTE: We have to retrieve the genesis block for each call to chain.joinChannel because
+                // NOTE: We have to retrieve the genesis block for each call to channel.joinChannel because
                 // that call destroys it.  Alternatively, figure out how to deep copy genesis_block_protobuf
                 // as retrieved earlier (because each retrieval is exactly the same).
                 promises.push(
                     channel_creator_client.getUserContext(channel_cfg.channel_creator_spec.user_name, true)
                     .then(channel_creator_user => {
                         logger.info('    attempting to retrieve genesis block');
-                        const nonce = FabricClientUtils.getNonce();
-                        const txId = FabricClient.buildTransactionID(nonce, channel_creator_user);
-                        return channel.chain.getGenesisBlock({
-                            txId: txId,
-                            nonce: nonce
+                        const txId = channel_creator_client.newTransactionID();
+                        return channel.getGenesisBlock({
+                            txId: txId
                         });
                     })
                     .then(genesis_block_protobuf_ => {
@@ -388,23 +396,21 @@ class SimpleClient {
                     // TODO: probably just make a "channel admin" user that does channel joining and install/instantiate.
                     .then(channel_joiner_user => {
                         logger.info('channel_joiner_user.getName():', channel_joiner_user.getName());
-                        const nonce                 = FabricClientUtils.getNonce();
-                        const txId                  = FabricClient.buildTransactionID(nonce, channel_joiner_user);
-                        logger.info('calling chain.joinChannel on targets %j using user "%s" on behalf of peer org "%s"', targets, participating_peer_org_cfg.channel_joiner_user_name, participating_peer_org_name);
-                        return chain.joinChannel({
+                        const txId                  = client.newTransactionID();
+                        logger.info('calling channel.joinChannel on targets %j using user "%s" on behalf of peer org "%s"', targets, participating_peer_org_cfg.channel_joiner_user_name, participating_peer_org_name);
+                        return channel.joinChannel({
                             targets: targets,
                             block: genesis_block_protobuf,
-                            txId: txId,
-                            nonce: nonce
+                            txId: txId
                         });
                     })
                     .then(result => {
-                        logger.info('chain.joinChannel succeeded for peer org "%s"; result: %j', participating_peer_org_name, result);
-                        logger.info('calling chain.initialize() for peer org "%s"', participating_peer_org_name);
-                        return chain.initialize();
+                        logger.info('channel.joinChannel succeeded for peer org "%s"; result: %j', participating_peer_org_name, result);
+                        logger.info('calling channel.initialize() for peer org "%s"', participating_peer_org_name);
+                        return channel.initialize();
                     })
                     .then(result => {
-                        logger.info('successfully initialized chain for peer org "%s"; result keys: %j', participating_peer_org_name, Object.keys(result));
+                        logger.info('successfully initialized channel for peer org "%s"; result keys: %j', participating_peer_org_name, Object.keys(result));
                     })
                 );
             }
@@ -429,7 +435,6 @@ class SimpleClient {
             const invoking_user_name            = invoking_user_name_for_org[participating_peer_org_name];
             const client                        = participating_peer_org.client;
             const channel                       = participating_peer_org.channels[channel_name];
-            const chain                         = channel.chain;
             const targets                       = [];
             for (const participating_peer_name of participating_peer_org_cfg.peers) {
                 targets.push(participating_peer_org.peers[participating_peer_name]);
@@ -439,15 +444,11 @@ class SimpleClient {
             promises.push(
                 client.getUserContext(invoking_user_name, true)
                 .then(admin_user => {
-                    const nonce = FabricClientUtils.getNonce();
-                    const txId = FabricClient.buildTransactionID(nonce, admin_user);
                     return client.installChaincode({
                         targets: targets,
                         chaincodePath: channel_cfg.chaincode.path,
                         chaincodeId: channel_cfg.chaincode.id,
-                        chaincodeVersion: channel_cfg.chaincode.version,
-                        txId: txId,
-                        nonce: nonce
+                        chaincodeVersion: channel_cfg.chaincode.version
                     });
                 })
                 .then(result => {
@@ -464,35 +465,32 @@ class SimpleClient {
                     return client.getUserContext(invoking_user_name, true);
                 })
                 .then(admin_user => {
-                    const nonce = FabricClientUtils.getNonce();
-                    const txId = FabricClient.buildTransactionID(nonce, admin_user);
-                    logger.info('calling chain.sendInstantiateProposal on peers of peer org "%s"; fcn = "%s", args = %j.', participating_peer_org_name, fcn, args);
+                    const txId = client.newTransactionID();
+                    logger.info('calling channel.sendInstantiateProposal on peers of peer org "%s"; fcn = "%s", args = %j.', participating_peer_org_name, fcn, args);
                     // TODO: specify unanimous endorsement policy
-                    return chain.sendInstantiateProposal({
-                        targets: targets,
-                        chaincodePath: channel_cfg.chaincode.path,
+                    // NOTE: targets, if not specified, is the list of peers added to this channel.
+                    return channel.sendInstantiateProposal({
                         chaincodeId: channel_cfg.chaincode.id,
                         chaincodeVersion: channel_cfg.chaincode.version,
                         fcn: fcn,
                         args: args,
-                        chainId: channel_name,
-                        txId: txId,
-                        nonce: nonce
+                        txId: txId
+                        // TODO: Can now specify endorsement policy here -- see ChaincodeInstantiateUpgradeRequest in docs
                     })
                 })
                 .then(result => {
-                    logger.info('call to chain.sendInstantiateProposal succeeded');
+                    logger.info('call to channel.sendInstantiateProposal succeeded');
                     const proposal_responses = result[0];
                     const proposal = result[1];
                     const header   = result[2];
                     for (var i = 0; i < proposal_responses.length; i++) {
                         if (proposal_responses[i] instanceof Error) {
-                            logger.info('error received in chain.sendInstantiateProposal response:', proposal_responses[i]);
+                            logger.info('error received in channel.sendInstantiateProposal response:', proposal_responses[i]);
                             throw new Error(proposal_responses[i]);
                         }
                     }
-                    logger.info('calling chain.sendTransaction on for sendInstantiateProposal responses; peer org is "%s".', participating_peer_org_name);
-                    return chain.sendTransaction({
+                    logger.info('calling channel.sendTransaction on for sendInstantiateProposal responses; peer org is "%s".', participating_peer_org_name);
+                    return channel.sendTransaction({
                         proposalResponses: proposal_responses,
                         proposal: proposal,
                         header: header
@@ -531,7 +529,6 @@ class SimpleClient {
         const invoking_user_org             = this.organizations[invoking_user_org_name];
         const client                        = invoking_user_org.client;
         const channel                       = invoking_user_org.channels[channel_name];
-        const chain                         = channel.chain;
 
         let txId;
 
@@ -542,21 +539,20 @@ class SimpleClient {
         // TEMP HACK - just invoke using Admin account
         return client.getUserContext(invoking_user_name, true)
         .then(user => {
-            const nonce = FabricClientUtils.getNonce();
-            txId = FabricClient.buildTransactionID(nonce, user);
-            logger.info('    calling chain.sendTransactionProposal');
-            return chain.sendTransactionProposal({
+            txId = client.newTransactionID();
+            logger.info('    calling channel.sendTransactionProposal');
+            // NOTE: Can optionally specify targets -- these would be the endorsing peers that the
+            // transaction is being proposed to.
+            return channel.sendTransactionProposal({
                 chaincodeId: channel_cfg.chaincode.id,
-                chainId: channel_name,
                 txId: txId,
-                nonce: nonce,
                 fcn: fcn,
                 args: args
             })
         })
         .then(result => {
             const proposal_responses    = result[0];
-            logger.info('    call to chain.sendTransactionProposal succeeded; proposal_responses[0] instanceof Error: %j', proposal_responses[0] instanceof Error);
+            logger.info('    call to channel.sendTransactionProposal succeeded; proposal_responses[0] instanceof Error: %j', proposal_responses[0] instanceof Error);
             const proposal              = result[1];
             const header                = result[2];
             // If any of the proposal_responses are instances of Error, throw an error.
@@ -570,28 +566,28 @@ class SimpleClient {
                     }
                 }
                 if (error_count > 0) {
-                    const error_message = util.format('chain.sendTransactionProposal response contained %d errors (out of %d responses); error messages were %s', error_count, proposal_responses.length, error_messages);
+                    const error_message = util.format('channel.sendTransactionProposal response contained %d errors (out of %d responses); error messages were %s', error_count, proposal_responses.length, error_messages);
                     logger.error('    %s', error_message);
-                    const e = util.format('chain.sendTransactionProposal failed; error(s): %s', error_messages);
+                    const e = util.format('channel.sendTransactionProposal failed; error(s): %s', error_messages);
                     throw new Error(e);
                 }
             }
             // Make sure all proposal_responses are the same.
-            if (!chain.compareProposalResponseResults(proposal_responses)) {
-                logger.info('    chain.compareProposalResponseResults failed');
-                throw new Error('chain.compareProposalResponseResults failed');
+            if (!channel.compareProposalResponseResults(proposal_responses)) {
+                logger.info('    channel.compareProposalResponseResults failed');
+                throw new Error('channel.compareProposalResponseResults failed');
             }
             // Verify that the proposal responses are signed correctly.
             for (var i = 0; i < proposal_responses.length; i++) {
-                if (!chain.verifyProposalResponse(proposal_responses[i])) {
-                    logger.info('    chain.verifyProposalResponses failed');
-                    throw new Error('chain.verifyProposalResponses failed');
+                if (!channel.verifyProposalResponse(proposal_responses[i])) {
+                    logger.info('    channel.verifyProposalResponses failed');
+                    throw new Error('channel.verifyProposalResponses failed');
                 }
             }
             // Check if the response is an error.
             assert(proposal_responses.length > 0, 'proposal_responses has no elements');
             if (proposal_responses[0] instanceof Error) {
-                logger.info('    error received in chain.sendInstantiateProposal response:', proposal_responses[0]);
+                logger.info('    error received in channel.sendInstantiateProposal response:', proposal_responses[0]);
                 throw new Error(proposal_responses[0]);
             }
             // Otherwise everything is good, so grab the payload.
@@ -622,12 +618,12 @@ class SimpleClient {
             );
             eventhub.connect();
 
-            const eventhub_txId = txId.toString();
+            const eventhub_txId = txId.getTransactionID().toString();
             // Set up event hub to listen for this transaction
             const eventhub_promise = new Promise(function(resolve, reject) {
                 const timeout_handle = setTimeout(
                     () => {
-                        logger.info('eventhub %s timed out waiting for txId ', eventhub_url, txId);
+                        logger.info('eventhub %s timed out waiting for txId ', eventhub_url, txId.getTransactionID());
                         eventhub.unregisterTxEvent(eventhub_txId);
                         logger.info('disconnecting eventhub %s', eventhub_url);
                         eventhub.disconnect();
@@ -635,12 +631,13 @@ class SimpleClient {
                     },
                     30000
                 );
-                logger.info('registering eventhub %s to listen for transaction ', eventhub_url, txId);
+                logger.info('registering eventhub %s to listen for transaction ', eventhub_url, txId.getTransactionID());
 
-                eventhub.registerTxEvent(eventhub_txId, function(txid, code) {
-                    logger.info('from eventhub %s : event %j received; code: %j', eventhub_url, txid, code);
+                eventhub.registerTxEvent(eventhub_txId, function(numeric_txid, code) {
+                    logger.info('from eventhub %s : event %j received; code: %j', eventhub_url, numeric_txid, code);
                     clearTimeout(timeout_handle);
-                    eventhub.unregisterTxEvent(txid);
+//                     eventhub.unregisterTxEvent(numeric_txid);
+                    eventhub.unregisterTxEvent(eventhub_txId);
                     logger.info('disconnecting eventhub %s', eventhub_url);
                     eventhub.disconnect();
 
@@ -652,8 +649,8 @@ class SimpleClient {
                 });
             });
 
-            logger.info('calling chain.sendTransaction on for sendTransactionProposal responses');
-            const transaction_promise = chain.sendTransaction({
+            logger.info('calling channel.sendTransaction on for sendTransactionProposal responses');
+            const transaction_promise = channel.sendTransaction({
                 proposalResponses: proposal_responses,
                 proposal: proposal,
                 header: header
