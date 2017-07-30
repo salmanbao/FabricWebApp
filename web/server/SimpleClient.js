@@ -234,7 +234,7 @@ class SimpleClient {
 
     // NOTE: Must have already successfully enrolled the specified registrar for this org.
     // Can specify undefined for enrollment_secret to have the CA generate one for you.
-    register_user_in_org__p (user_name, enrollment_secret, role_string, org_name, registrar_name) {
+    register_user_in_org__p (user_name, enrollment_secret, role_string, affiliation, org_name, registrar_name) {
         const org       = this.organizations[org_name];
         const org_cfg   = this.netcfg.organizations[org_name];
 
@@ -247,9 +247,10 @@ class SimpleClient {
                     enrollmentID: user_name,
                     enrollmentSecret: enrollment_secret,
                     role: role_string,
+                    affiliation: affiliation,
 //                     affiliation: org_name, // TODO: Is this sufficient/correct?
 //                     affiliation: org_cfg.mspid, // TODO: Is this sufficient/correct?
-                    affiliation: org_name+'_affiliation', // NOTE: For now, use a distinct string to see if there's a problem
+//                     affiliation: org_name+'_affiliation', // NOTE: For now, use a distinct string to see if there's a problem
                     maxEnrollments: 0, // no limit to number of enrollments
                     attrs: [] // NOTE: This is not used by fabric-sdk-node yet!
                 },
@@ -291,10 +292,10 @@ class SimpleClient {
         });
     }
 
-    register_and_enroll_user_in_org__p (user_name, enrollment_secret, role_string, org_name, registrar_name) {
-        return this.register_user_in_org__p(user_name, enrollment_secret, role_string, org_name, registrar_name)
+    register_and_enroll_user_in_org__p (user_name, enrollment_secret, role_string, affiliation, org_name, registrar_name) {
+        return this.register_user_in_org__p(user_name, enrollment_secret, role_string, affiliation, org_name, registrar_name)
         .then(returned_enrollment_secret => {
-            return this.enroll_user_in_org__p(user_name, returned_enrollment_secret);
+            return this.enroll_user_in_org__p(user_name, returned_enrollment_secret, org_name);
         })
     }
 
