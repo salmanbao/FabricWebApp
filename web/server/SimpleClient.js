@@ -96,13 +96,14 @@ class SimpleClient {
             for (const peer_name in org_cfg.peers) {
                 const peer_cfg          = org_cfg.peers[peer_name];
                 logger.info('creating peer "%s" using cfg %j', peer_name, peer_cfg);
-                const peer_tls_cacerts  = fs.readFileSync(path.resolve(__dirname, peer_cfg.peer_tls_cacerts_path));
+//                 const peer_tls_cacerts  = fs.readFileSync(path.resolve(__dirname, peer_cfg.peer_tls_cacerts_path));
                 const peer              = client.newPeer(
                     assemble_url_from_remote(peer_cfg.requests_remote),
                     {
-                        'pem'                     : Buffer.from(peer_tls_cacerts).toString(),
-                        'ssl-target-name-override': peer_cfg.ssl_target_name_override,
-                        'request-timeout'         : 120000 // NOTE: This is probably excessive, but for now use it.
+                        // NOTE: TLS is disabled on the peer
+//                         'pem'                     : Buffer.from(peer_tls_cacerts).toString(),
+//                         'ssl-target-name-override': peer_cfg.ssl_target_name_override,
+//                         'request-timeout'         : 120000 // NOTE: This is probably excessive, but for now use it.
                     }
                 );
 

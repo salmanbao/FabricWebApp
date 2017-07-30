@@ -18,56 +18,50 @@ all:
 generated-artifacts:
 	docker-compose -f docker/initialize.yaml up crypto_config
 	docker-compose -f docker/initialize.yaml up channel_config
-	# This removes stopped containers
-	docker-compose -f docker/initialize.yaml rm --force
+	# This removes stopped containers, and importantly, the anonymous volume created by the fact that
+	# the channel_config service uses the image hyperledger/fabric-tools:x86_64-1.0.0, which creates
+	# an anonymous volume.
+	docker-compose -f docker/initialize.yaml rm -v --force
 	# This command succeeds if and only if the specified volumes exist -- TODO: This doesn't actually check
 	# what we want, because docker-compose creates all these volumes upon startup, regardless of what happens later.
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
-# 	docker volume inspect $(COMPOSE_PROJECT_NAME)_generated_artifacts__volume
 
 # TODO: Put failsafes in to prevent calling this twice?
 initialize-org0.example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
 	docker-compose -f docker/initialize.yaml up com_example_org0__initialize
-	# This removes stopped containers
-	docker-compose -f docker/initialize.yaml rm --force
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(COM_EXAMPLE_ORG0_VOLUMES)
-# 	docker volume inspect $(COMPOSE_PROJECT_NAME)_com_example_org0_ca__volume $(COMPOSE_PROJECT_NAME)_com_example_org0_peer0__volume $(COMPOSE_PROJECT_NAME)_com_example_org0_peer1__volume
 
 initialize-org1.example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
 	docker-compose -f docker/initialize.yaml up com_example_org1__initialize
-	# This removes stopped containers
-	docker-compose -f docker/initialize.yaml rm --force
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(COM_EXAMPLE_ORG1_VOLUMES)
-# 	docker volume inspect $(COMPOSE_PROJECT_NAME)_com_example_org1_ca__volume $(COMPOSE_PROJECT_NAME)_com_example_org1_peer0__volume $(COMPOSE_PROJECT_NAME)_com_example_org1_peer1__volume
 
 initialize-example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
 	docker-compose -f docker/initialize.yaml up com_example__initialize
-	# This removes stopped containers
-	docker-compose -f docker/initialize.yaml rm --force
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(COM_EXAMPLE_VOLUMES)
-# 	docker volume inspect $(COMPOSE_PROJECT_NAME)_com_example_ca__volume $(COMPOSE_PROJECT_NAME)_com_example_orderer__volume
 
 initialize-www.example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
 	docker-compose -f docker/initialize.yaml up com_example_www__initialize
-	# This removes stopped containers
-	docker-compose -f docker/initialize.yaml rm --force
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(COM_EXAMPLE_WWW_VOLUMES)
-# 	docker volume inspect $(COMPOSE_PROJECT_NAME)_com_example_www__volume
 
 # Copies necessary materials from generated_artifacts__volume to the volumes for various peers/orderers/etc.
 initialize: initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com
+	docker-compose -f docker/initialize.yaml down
+
+# Brings down the services defined in docker/initialize.yaml
+initialize-down:
+	docker-compose -f docker/initialize.yaml down
 
 # Note that this only checks for the presence of certain volumes.  It doesn't verify that the contents are correct.
 inspect-initialized-volumes:
@@ -124,7 +118,7 @@ rm-node-modules:
 
 # Delete generated_artifacts__volume.  This contains all cryptographic material and some channel config material.
 # BE REALLY CAREFUL ABOUT RUNNING THIS ONE, BECAUSE IT CONTAINS YOUR ROOT CA CERTS/KEYS.
-rm-generated-artifacts:
+rm-generated-artifacts: initialize-down
 	docker volume rm $(GENERATED_ARTIFACTS_VOLUME) || true
 
 # Delete the docker image that the webserver uses.  The shell "or" with `true` is so this command never fails.
