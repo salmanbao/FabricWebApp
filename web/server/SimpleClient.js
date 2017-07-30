@@ -43,7 +43,7 @@ class SimpleClient {
         logger.info('appcfg:', appcfg);
 
         // Set up the GOPATH env var; NOTE: This is bad encapsulation, but it's used by fabric-sdk-node.
-        process.env.GOPATH = path.join(__dirname, appcfg.GOPATH);
+        process.env.GOPATH = path.resolve(__dirname, appcfg.GOPATH);
 
         // Create organizations.
         this.organizations  = {};
@@ -80,7 +80,7 @@ class SimpleClient {
             for (const orderer_name in org_cfg.orderers) {
                 const orderer_cfg           = org_cfg.orderers[orderer_name];
                 logger.info('creating orderer "%s" using cfg %j', orderer_name, orderer_cfg);
-//                 const orderer_tls_cacerts = fs.readFileSync(path.join(__dirname, orderer_cfg.orderer_tls_cacerts_path));
+//                 const orderer_tls_cacerts = fs.readFileSync(path.resolve(__dirname, orderer_cfg.orderer_tls_cacerts_path));
                 org.orderers[orderer_name]  = client.newOrderer(
                     assemble_url_from_remote(orderer_cfg.remote),
                     {
@@ -96,7 +96,7 @@ class SimpleClient {
             for (const peer_name in org_cfg.peers) {
                 const peer_cfg          = org_cfg.peers[peer_name];
                 logger.info('creating peer "%s" using cfg %j', peer_name, peer_cfg);
-                const peer_tls_cacerts  = fs.readFileSync(path.join(__dirname, peer_cfg.peer_tls_cacerts_path));
+                const peer_tls_cacerts  = fs.readFileSync(path.resolve(__dirname, peer_cfg.peer_tls_cacerts_path));
                 const peer              = client.newPeer(
                     assemble_url_from_remote(peer_cfg.requests_remote),
                     {
@@ -191,13 +191,13 @@ class SimpleClient {
             for (const user_name in org_cfg.users) {
                 const user_cfg                  = org_cfg.users[user_name];
                 // TODO: Probably specify cert/key filenames directly, instead of relying on particular dir structure/filename scheme
-                const user_msp_cert_dir         = fs.readdirSync(path.join(__dirname, user_cfg.msp_path, 'signcerts'));
+                const user_msp_cert_dir         = fs.readdirSync(path.resolve(__dirname, user_cfg.msp_path, 'signcerts'));
                 assert(user_msp_cert_dir.length == 1, util.format('msp/signcerts directory must contain exactly 1 entry; actual was %j', user_msp_cert_dir));
-                const user_msp_key_dir          = fs.readdirSync(path.join(__dirname, user_cfg.msp_path, 'keystore'));
+                const user_msp_key_dir          = fs.readdirSync(path.resolve(__dirname, user_cfg.msp_path, 'keystore'));
                 assert(user_msp_key_dir.length == 1, util.format('msp/keystore directory must contain exactly 1 entry; actual was %j', user_msp_key_dir));
                 logger.info('    org_name: "%s", user_name: "%s", user_msp_cert_dir: %j, user_msp_key_dir: %j', org_name, user_name, user_msp_cert_dir, user_msp_key_dir);
-                const user_msp_cert_filename    = path.join(__dirname, user_cfg.msp_path, 'signcerts', user_msp_cert_dir[0]);
-                const user_msp_key_filename     = path.join(__dirname, user_cfg.msp_path, 'keystore', user_msp_key_dir[0]);
+                const user_msp_cert_filename    = path.resolve(__dirname, user_cfg.msp_path, 'signcerts', user_msp_cert_dir[0]);
+                const user_msp_key_filename     = path.resolve(__dirname, user_cfg.msp_path, 'keystore', user_msp_key_dir[0]);
                 const user_msp_cert             = fs.readFileSync(user_msp_cert_filename);
                 const user_msp_key              = fs.readFileSync(user_msp_key_filename);
                 logger.info('    calling client.createUser on user_cfg "%s" for organization "%s"', user_name, org_name);
@@ -324,7 +324,7 @@ class SimpleClient {
                 channel_orderer = participating_orderer_org.orderers[participating_orderer_name];
             }
 
-            const configtx                  = fs.readFileSync(path.join(__dirname, channel_cfg.configtx_path));
+            const configtx                  = fs.readFileSync(path.resolve(__dirname, channel_cfg.configtx_path));
             promises.push(
                 channel_creator_client.getUserContext(channel_cfg.channel_creator_spec.user_name, true)
                 .then((channel_creator_user_) => {
