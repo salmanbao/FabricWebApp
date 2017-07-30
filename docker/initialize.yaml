@@ -1,0 +1,134 @@
+version: '2'
+
+volumes:
+    # Really there should be one generated_artifacts__volume for each org.
+    generated_artifacts__volume:
+
+    com_example_org0_ca__volume:
+    com_example_org0_peer0__volume:
+    com_example_org0_peer1__volume:
+
+    com_example_org1_ca__volume:
+    com_example_org1_peer0__volume:
+    com_example_org1_peer1__volume:
+
+    com_example_ca__volume:
+    com_example_orderer__volume:
+
+    com_example_www__volume:
+
+services:
+
+    # TODO: Make a volume for the root CA(s), which can be taken offline and secured.  Meaning that the initialization
+    # done in this docker-compose file should be done offline (i.e. on an air-gapped computer).
+
+    # TODO: Use synchronizer.py and chain these all together so they can manage their own dependencies
+
+    # TODO: This is where the root CA cert/key would be used, and it wouldn't make it onto any publicly accessible server.
+    # See https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
+    crypto_config:
+        image: hyperledger/fabric-ca:x86_64-1.0.0
+        volumes:
+            - ../source-artifacts:/source-artifacts:ro
+            - generated_artifacts__volume:/generated-artifacts:rw
+        command: |
+            bash -cx "
+                cd /generated-artifacts
+                /source-artifacts/fabric-ca-cryptogen.sh
+            "
+
+    # TODO: Figure out how to combine fabric-ca and fabric-tools docker images so only one service is needed (this service
+    # could then be subsumed by crypto_config into a generate_artifacts service)
+    channel_config:
+        image: hyperledger/fabric-tools:x86_64-1.0.0
+        volumes:
+            - ../source-artifacts:/source-artifacts:ro
+            - generated_artifacts__volume:/generated-artifacts:rw
+        environment:
+            - FABRIC_CFG_PATH=/source-artifacts
+        command: |
+            bash -cx "
+                cd /source-artifacts
+                configtxgen -profile TwoOrgsChannel -outputCreateChannelTx /generated-artifacts/mychannel.tx -channelID mychannel
+                configtxgen -profile TwoOrgsOrdererGenesis -outputBlock /generated-artifacts/orderer.genesis.block
+            "
+                #configtxgen -profile TwoOrgsOrdererGenesis -channelID mychannel -inspectBlock /generated-artifacts/orderer.genesis.block
+
+    com_example_org0__initialize:
+        image: hyperledger/fabric-baseos:x86_64-0.3.1
+        volumes:
+            - generated_artifacts__volume:/generated-artifacts:ro
+            - com_example_org0_ca__volume:/var/hyperledger/ca:rw
+            - com_example_org0_peer0__volume:/var/hyperledger/peer0:rw
+            - com_example_org0_peer1__volume:/var/hyperledger/peer1:rw
+        # TODO: Exclude certain files left over from fabric-ca-cryptogen.sh (e.g. log files, fabric-ca-client-config.yaml)
+        command: |
+            bash -cx "
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/* /var/hyperledger/peer0/
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/* /var/hyperledger/peer1/
+            "
+                #cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/intermediate/* /var/hyperledger/ca/
+
+    com_example_org1__initialize:
+        image: hyperledger/fabric-baseos:x86_64-0.3.1
+        volumes:
+            - generated_artifacts__volume:/generated-artifacts:ro
+            - com_example_org1_ca__volume:/var/hyperledger/ca:rw
+            - com_example_org1_peer0__volume:/var/hyperledger/peer0:rw
+            - com_example_org1_peer1__volume:/var/hyperledger/peer1:rw
+        # TODO: Exclude certain files left over from fabric-ca-cryptogen.sh (e.g. log files, fabric-ca-client-config.yaml)
+        command: |
+            bash -cx "
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/* /var/hyperledger/peer0/
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/* /var/hyperledger/peer1/
+            "
+                #cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/intermediate/* /var/hyperledger/ca/
+
+    com_example__initialize:
+        image: hyperledger/fabric-baseos:x86_64-0.3.1
+        volumes:
+            - generated_artifacts__volume:/generated-artifacts:ro
+            - com_example_ca__volume:/var/hyperledger/ca:rw
+            - com_example_orderer__volume:/var/hyperledger/orderer:rw
+        command: |
+            bash -cx "
+                cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/* /var/hyperledger/orderer/
+                cp /generated-artifacts/orderer.genesis.block /var/hyperledger/orderer/
+            "
+                #cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/ca/intermediate/* /var/hyperledger/ca/
+
+    com_example_www__initialize:
+        image: hyperledger/fabric-baseos:x86_64-0.3.1
+        volumes:
+            - generated_artifacts__volume:/generated-artifacts:ro
+            - com_example_www__volume:/var/hyperledger/www:rw
+        # Copy user crypto materials except for the rootAdmin users (i.e. the admin accounts of the root CAs).
+        command: |
+            bash -cx "
+                mkdir -p /var/hyperledger/www/crypto-config/example.com/users/
+
+                cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/users/Admin@example.com /var/hyperledger/www/crypto-config/example.com/users/
+                cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/users/User1@example.com /var/hyperledger/www/crypto-config/example.com/users/
+
+                mkdir -p /var/hyperledger/www/crypto-config/org0.example.com/users/
+
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/Admin@org0.example.com /var/hyperledger/www/crypto-config/org0.example.com/users/
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/User1@org0.example.com /var/hyperledger/www/crypto-config/org0.example.com/users/
+
+                mkdir -p /var/hyperledger/www/crypto-config/org1.example.com/users/
+
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com /var/hyperledger/www/crypto-config/org1.example.com/users/
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com /var/hyperledger/www/crypto-config/org1.example.com/users/
+
+                cp /generated-artifacts/mychannel.tx /var/hyperledger/www/
+            "
+                #mkdir -p /var/hyperledger/www/crypto-config/example.com/trusted-roots/
+                #cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/ca/root/ca-cert.pem /var/hyperledger/www/crypto-config/example.com/trusted-roots/
+                #mkdir -p /var/hyperledger/www/crypto-config/org0.example.com/trusted-roots/
+                #cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/root/ca-cert.pem /var/hyperledger/www/crypto-config/org0.example.com/trusted-roots/
+                #mkdir -p /var/hyperledger/www/crypto-config/org1.example.com/trusted-roots/
+                #cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/root/ca-cert.pem /var/hyperledger/www/crypto-config/org1.example.com/trusted-roots/
+                #cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/users/intermediateAdmin /var/hyperledger/www/crypto-config/example.com/users/
+                #cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/intermediateAdmin /var/hyperledger/www/crypto-config/org0.example.com/users/
+                #cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/intermediateAdmin /var/hyperledger/www/crypto-config/org1.example.com/users/
+

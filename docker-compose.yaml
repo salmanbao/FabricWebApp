@@ -1,11 +1,22 @@
 version: '2'
 
 volumes:
+  com_example_org0_ca__volume:
+  com_example_org0_peer0__volume:
+  com_example_org0_peer1__volume:
+
+  com_example_org1_ca__volume:
+  com_example_org1_peer0__volume:
+  com_example_org1_peer1__volume:
+
+  #com_example_ca__volume:
+  com_example_orderer__volume:
+
+  com_example_www__volume:
+
   webserver_homedir:
   webserver_homedir_node_modules:
   webserver_tmp:
-  ca_org0_volume:
-  ca_org1_volume:
 
 services:
 
@@ -16,11 +27,11 @@ services:
       service: ca-base
     volumes:
       # This is the persistent storage volume for the CA.
-      - ca_org0_volume:/var/hyperledger/fabric-ca-server:rw
-      # This is the directory that contains the pre-loaded keys for the CA.
-      - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/:/etc/hyperledger/fabric-ca-server:ro
-      # This is the CA configuration file.
-      - ./source-artifacts/ca.org0.example.com/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml:ro
+      - com_example_org0_ca__volume:/var/hyperledger/ca:rw
+      ## This is the directory that contains the pre-loaded keys for the CA.
+      #- ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/root/:/etc/hyperledger/fabric-ca-server:rw
+      ## This is the CA configuration file.
+      #- ./source-artifacts/ca.org0.example.com/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml:ro
     # This is not necessary -- just a little self-documenting hint that this service is being offered on port 7054
     ports:
       - 7054:7054
@@ -32,11 +43,11 @@ services:
       service: ca-base
     volumes:
       # This is the persistent storage volume for the CA.
-      - ca_org1_volume:/var/hyperledger/fabric-ca-server:rw
-      # This is the directory that contains the pre-loaded keys for the CA.
-      - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server:ro
-      # This is the CA configuration file.
-      - ./source-artifacts/ca.org1.example.com/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml:ro
+      - com_example_org0_ca__volume:/var/hyperledger/ca:rw
+      ## This is the directory that contains the pre-loaded keys for the CA.
+      #- ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server:rw
+      ## This is the CA configuration file.
+      #- ./source-artifacts/ca.org1.example.com/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml:ro
     # This is really only necessary if you want to access this service from the host.
     # Configurations within these docker-compose services should just use the native port 7054 (since
     # each service has its own IP address).  In particular, within the docker services, this
@@ -52,9 +63,10 @@ services:
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
 
       - ORDERER_GENERAL_GENESISMETHOD=file
-      - ORDERER_GENERAL_GENESISFILE=/etc/hyperledger/configtx/orderer.genesis.block
+      #- ORDERER_GENERAL_GENESISFILE=/etc/hyperledger/configtx/orderer.genesis.block
+      - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
-      - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/orderer/msp
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
 
       - ORDERER_GENERAL_TLS_ENABLED=false
       #- ORDERER_GENERAL_TLS_ENABLED=true
@@ -62,14 +74,20 @@ services:
       #- ORDERER_GENERAL_TLS_CERTIFICATE=/etc/hyperledger/orderer/tls/server.crt
       #- ORDERER_GENERAL_TLS_ROOTCAS=[/etc/hyperledger/orderer/tls/ca.crt]
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
-    command: orderer
+    #command: orderer
+    command: |
+        bash -cx "
+            find /var/hyperledger/orderer
+            orderer
+        "
     volumes:
-      - ./generated-artifacts/orderer.genesis.block:/etc/hyperledger/configtx/orderer.genesis.block:ro
+      #- ./generated-artifacts/orderer.genesis.block:/etc/hyperledger/configtx/orderer.genesis.block:ro
       # TODO: Try to make this read-only, and then combine the two mount directives?
       # The msp and tls subdirs are the only subdirs, so one mount directive would
       # be equivalent as long as read-only is ok for msp.
-      - ./generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/etc/hyperledger/orderer/msp:ro
+      #- ./generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/etc/hyperledger/orderer/msp:ro
       #- ./generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/etc/hyperledger/orderer/tls:ro
+      - com_example_orderer__volume:/var/hyperledger/orderer:rw
     ports:
       - 7050:7050
 
@@ -85,8 +103,9 @@ services:
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org0.example.com:7051
       - CORE_PEER_LOCALMSPID=Org0MSP
     volumes:
-      - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/msp:/etc/hyperledger/fabric/msp:ro
+      #- ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/msp:/etc/hyperledger/fabric/msp:ro
       #- ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/tls:/etc/hyperledger/fabric/tls:ro
+      - com_example_org0_peer0__volume:/var/hyperledger/peer:rw
     ports:
       - 7051:7051
       - 7053:7053
@@ -103,8 +122,9 @@ services:
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org0.example.com:7051
       - CORE_PEER_LOCALMSPID=Org0MSP
     volumes:
-      - ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/msp:/etc/hyperledger/fabric/msp:ro
+      #- ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/msp:/etc/hyperledger/fabric/msp:ro
       #- ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/tls:/etc/hyperledger/fabric/tls:ro
+      - com_example_org0_peer1__volume:/var/hyperledger/peer:rw
     # This is really only necessary if you want to access this service from the host.
     # Configurations within these docker-compose services should just use the native ports (since
     # each service has its own IP address).  In particular, within the docker services, this
@@ -124,8 +144,9 @@ services:
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
     volumes:
-      - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp:ro
+      #- ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp:ro
       #- ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls:ro
+      - com_example_org1_peer0__volume:/var/hyperledger/peer:rw
     # This is really only necessary if you want to access this service from the host.
     # Configurations within these docker-compose services should just use the native ports (since
     # each service has its own IP address).  In particular, within the docker services, this
@@ -146,8 +167,9 @@ services:
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org1.example.com:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
     volumes:
-      - ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/msp:/etc/hyperledger/fabric/msp:ro
+      #- ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/msp:/etc/hyperledger/fabric/msp:ro
       #- ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls:/etc/hyperledger/fabric/tls:ro
+      - com_example_org1_peer1__volume:/var/hyperledger/peer:rw
     # This is really only necessary if you want to access this service from the host.
     # Configurations within these docker-compose services should just use the native ports (since
     # each service has its own IP address).  In particular, within the docker services, this
@@ -178,14 +200,16 @@ services:
     ports:
       - 4000:4000
     volumes:
-      # This is to contain and persist temp storage (key store)
+      # This is to contain and persist temp storage (key store); TODO: Combine this and webserver_homedir into one.
       - webserver_tmp:/tmp:rw
-      # This is to contain and persist other temp storage
+      # This is to contain and persist other temp storage; TODO: Combine this and webserver_tmp into one.
       - webserver_homedir:/home/minion:rw
       # This is to contain and persist node_modules
       - webserver_homedir_node_modules:/home/minion/node_modules:rw
       # Mount this project's files.  TODO: Mount only the minimal necessary files (move necessary certs to under web/server)
       - .:/home/minion/${COMPOSE_PROJECT_NAME}:ro
+      # Mount the volume with config/crypto materials
+      - com_example_www__volume:/var/hyperledger/www:ro
     depends_on:
       - ca.org0.example.com
       - ca.org1.example.com
