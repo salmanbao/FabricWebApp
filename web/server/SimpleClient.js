@@ -63,9 +63,9 @@ class SimpleClient {
                 const cryptoSuite_path  = appcfg.cryptoSuite_path_prefix + org_name;
                 const cryptoSuite       = FabricClient.newCryptoSuite({
                     software    : true,
-//                     keysize     : // This may be optional as well.  TODO: Specify in appcfg, or perhaps this is tied to the generated crypto materials.
-                    algorithm   : 'EC', // Docs say (as of v1.0.0 this is the only supported value)
-                    hash        : 'SHA3' // Does this need to match some external thing?
+//                     keysize     : 256, // This may be optional as well.  TODO: Specify in appcfg, or perhaps this is tied to the generated crypto materials.
+                    algorithm   : 'EC', // Docs say (as of v1.0.0) this is the only supported value
+                    hash        : 'SHA2' // Does this need to match some external thing?
                 });
                 org.ca = new FabricCAServices(
                     assemble_url_from_remote(ca_cfg.remote),
