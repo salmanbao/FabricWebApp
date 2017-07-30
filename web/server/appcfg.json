@@ -7,7 +7,8 @@
     "eventWaitTime":"30000",
     "channels": {
         "mychannel": {
-            "configtx_path": "../../generated-artifacts/mychannel.tx",
+            "__configtx_path": "../../../../../var/hyperledger/www/mychannel.tx",
+            "configtx_path": "/var/hyperledger/www/mychannel.tx",
             "chaincode": {
                 "id": "mycc",
                 "version": "v0",

@@ -3,7 +3,7 @@
         "__url": "grpcs://orderer.example.com:7050",
         "url": "grpc://orderer.example.com:7050",
         "ssl_target_name_override": "orderer.example.com",
-        "orderer_tls_cacerts_path": "../../generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt"
+        "orderer_tls_cacerts_path": "../../generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt"
     },
     "organizations": {
         "orderer": {
@@ -20,7 +20,7 @@
                         "port": 7050
                     },
                     "ssl_target_name_override": "orderer.example.com",
-                    "orderer_tls_cacerts_path": "../../generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt"
+                    "orderer_tls_cacerts_path": "../../generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt"
                 }
             },
             "peers": {
@@ -64,7 +64,7 @@
                         "port": 7053
                     },
                     "ssl_target_name_override": "peer0.org0.example.com",
-                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/tls/ca.crt"
+                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/tls/server.crt"
                 },
                 "peer1.org0.example.com": {
                     "requests_remote": {
@@ -80,7 +80,7 @@
                         "port": 7053
                     },
                     "ssl_target_name_override": "peer1.org0.example.com",
-                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/tls/ca.crt"
+                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/tls/server.crt"
                 }
             },
             "users": {
@@ -126,7 +126,7 @@
                         "port": 7053
                     },
                     "ssl_target_name_override": "peer0.org1.example.com",
-                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt"
                 },
                 "peer1.org1.example.com": {
                     "requests_remote": {
@@ -142,7 +142,7 @@
                         "port": 7053
                     },
                     "ssl_target_name_override": "peer1.org1.example.com",
-                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls/ca.crt"
+                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls/server.crt"
                 }
             },
             "users": {

@@ -111,14 +111,14 @@ Promise.resolve()
     return Promise.all([
         simple_client.query__p({
             channel_name: channel_name,
-            invoking_user_name: 'Admin', // TEMP HACK
+            invoking_user_name: 'User1', // TEMP HACK
             invoking_user_org_name: 'org0',
             fcn: 'query',
             args: ['alice']
         }),
         simple_client.query__p({
             channel_name: channel_name,
-            invoking_user_name: 'Admin', // TEMP HACK
+            invoking_user_name: 'User1', // TEMP HACK
             invoking_user_org_name: 'org0',
             fcn: 'query',
             args: ['bob']
