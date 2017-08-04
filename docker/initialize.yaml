@@ -27,15 +27,17 @@ services:
     # TODO: This is where the root CA cert/key would be used, and it wouldn't make it onto any publicly accessible server.
     # See https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
     crypto_config:
-        image: hyperledger/fabric-ca:x86_64-1.0.0
+        #image: hyperledger/fabric-ca:x86_64-1.0.0
+        image: hyperledger/fabric-ca:x86_64-1.0.1-snapshot-8b146a1
         volumes:
             - ../source-artifacts:/source-artifacts:ro
             - generated_artifacts__volume:/generated-artifacts:rw
         command: |
             bash -cx "
                 cd /generated-artifacts
-                /source-artifacts/fabric-ca-cryptogen.sh
+                /source-artifacts/fabric-ca-cryptogen.alternate.sh
             "
+                #/source-artifacts/fabric-ca-cryptogen.sh
 
     # TODO: Figure out how to combine fabric-ca and fabric-tools docker images so only one service is needed (this service
     # could then be subsumed by crypto_config into a generate_artifacts service)
@@ -61,6 +63,7 @@ services:
     com_example_org0__initialize:
         image: hyperledger/fabric-baseos:x86_64-0.3.1
         volumes:
+            - ../source-artifacts:/source-artifacts:ro
             - generated_artifacts__volume:/generated-artifacts:ro
             - com_example_org0_ca__volume:/var/hyperledger/ca:rw
             - com_example_org0_peer0__volume:/var/hyperledger/peer0:rw
@@ -68,14 +71,18 @@ services:
         # TODO: Exclude certain files left over from fabric-ca-cryptogen.sh (e.g. log files, fabric-ca-client-config.yaml)
         command: |
             bash -cx "
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/intermediate/* /var/hyperledger/ca/
+                cp /source-artifacts/peer0.org0.example.com/core.yaml /var/hyperledger/peer0/
+                cp /source-artifacts/peer1.org0.example.com/core.yaml /var/hyperledger/peer1/
                 cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/* /var/hyperledger/peer0/
                 cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/* /var/hyperledger/peer1/
             "
-                #cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/intermediate/* /var/hyperledger/ca/
+                #cp /source-artifacts/ca.org0.example.com/fabric-ca-server-config.yaml /var/hyperledger/ca/
 
     com_example_org1__initialize:
         image: hyperledger/fabric-baseos:x86_64-0.3.1
         volumes:
+            - ../source-artifacts:/source-artifacts:ro
             - generated_artifacts__volume:/generated-artifacts:ro
             - com_example_org1_ca__volume:/var/hyperledger/ca:rw
             - com_example_org1_peer0__volume:/var/hyperledger/peer0:rw
@@ -83,10 +90,13 @@ services:
         # TODO: Exclude certain files left over from fabric-ca-cryptogen.sh (e.g. log files, fabric-ca-client-config.yaml)
         command: |
             bash -cx "
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/intermediate/* /var/hyperledger/ca/
+                cp /source-artifacts/peer0.org1.example.com/core.yaml /var/hyperledger/peer0/
+                cp /source-artifacts/peer1.org1.example.com/core.yaml /var/hyperledger/peer1/
                 cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/* /var/hyperledger/peer0/
                 cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/* /var/hyperledger/peer1/
             "
-                #cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/intermediate/* /var/hyperledger/ca/
+                #cp /source-artifacts/ca.org1.example.com/fabric-ca-server-config.yaml /var/hyperledger/ca/
 
     com_example__initialize:
         image: hyperledger/fabric-baseos:x86_64-0.3.1
@@ -96,10 +106,11 @@ services:
             - com_example_orderer__volume:/var/hyperledger/orderer:rw
         command: |
             bash -cx "
+                cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/ca/intermediate/* /var/hyperledger/ca/
                 cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/* /var/hyperledger/orderer/
                 cp /generated-artifacts/orderer.genesis.block /var/hyperledger/orderer/
             "
-                #cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/ca/intermediate/* /var/hyperledger/ca/
+                #cp /source-artifacts/ca.example.com/fabric-ca-server-config.yaml /var/hyperledger/ca/
 
     com_example_www__initialize:
         image: hyperledger/fabric-baseos:x86_64-0.3.1

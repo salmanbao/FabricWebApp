@@ -81,7 +81,12 @@ Promise.resolve()
     logger.debug('**************************************************');
     logger.debug('**************************************************');
     logger.debug('**************************************************');
-    return simple_client.join_channels__p()
+    return simple_client.join_channels__p().
+    catch(err => {
+        logger.info('error in simple_client.join_channels__p(): ' + err);
+        logger.info(err.stack);
+        throw err;
+    });
 })
 .then(() => {
     logger.debug('**************************************************');
@@ -134,10 +139,10 @@ Promise.resolve()
 // })
 .then(() => {
 //     return simple_client.register_user_in_org__p('FancyUser', 'FancyPassword', 'user', 'org1.department1', 'org1', 'Admin');
-    return simple_client.enroll_user_in_org__p('ignore', 'ignorepw', 'org1');
+    return simple_client.enroll_user_in_org__p('admin', 'adminpw', 'org1');
 })
 .then(user => {
-    return simple_client.register_and_enroll_user_in_org__p('FancyUser', 'FancyPassword', 'user', 'org1.department1', 'org1', 'ignore');
+    return simple_client.register_and_enroll_user_in_org__p('FancyUser', 'FancyPassword', 'user', 'org1.department1', 'org1', 'admin');
 })
 // .then(enrollment_secret => {
 //     logger.debug('register_user_in_org__p succeeded; enrollment_secret = "%s"', enrollment_secret);

@@ -393,7 +393,7 @@ class SimpleClient {
                     .then(genesis_block_protobuf_ => {
                         logger.info('successfully retrieved genesis block');
                         genesis_block_protobuf = genesis_block_protobuf_;
-                        return client.getUserContext(participating_peer_org_cfg.channel_joiner_user_name, true)
+                        return client.getUserContext(participating_peer_org_cfg.channel_joiner_user_name, true);
                     })
                     // TODO: probably just make a "channel admin" user that does channel joining and install/instantiate.
                     .then(channel_joiner_user => {
@@ -407,6 +407,18 @@ class SimpleClient {
                         });
                     })
                     .then(result => {
+                        assert(result.length == targets.length, 'should have received as many results as targets');
+                        let err = null;
+                        // TODO: Make this error more descriptive and useful
+                        for (var i = 0; i < result.length; i++) {
+                            if (result[i] instanceof Error) {
+                                logger.info('channel.joinChannel produced error for peer org "%s", peer "%s"; error: %j', participating_peer_org_name, targets[i]._url, result[i]);
+                                if (err == null)
+                                    err = result[i];
+                            }
+                        }
+                        if (err != null)
+                            throw err;
                         logger.info('channel.joinChannel succeeded for peer org "%s"; result: %j', participating_peer_org_name, result);
                         logger.info('calling channel.initialize() for peer org "%s"', participating_peer_org_name);
                         return channel.initialize();

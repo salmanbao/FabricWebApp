@@ -7,7 +7,6 @@
     "eventWaitTime":"30000",
     "channels": {
         "mychannel": {
-            "__configtx_path": "../../../../../var/hyperledger/www/mychannel.tx",
             "configtx_path": "/var/hyperledger/www/mychannel.tx",
             "chaincode": {
                 "id": "mycc",
@@ -16,7 +15,6 @@
             },
             "channel_creator_spec": {
                 "organization_name": "org0",
-                "__user_name": "admin",
                 "user_name": "Admin"
             },
             "__TODO:": "In theory there could be multiple orderers, but this doesn't appear to be supported in fabric-sdk-node yet, so for now, must have only 1",
@@ -27,7 +25,6 @@
             },
             "participating_peer_organizations": {
                 "org0": {
-                    "__channel_joiner_user_name": "admin",
                     "channel_joiner_user_name": "Admin",
                     "peers": [
                         "peer0.org0.example.com",
@@ -35,7 +32,6 @@
                     ]
                 },
                 "org1": {
-                    "__channel_joiner_user_name": "admin",
                     "channel_joiner_user_name": "Admin",
                     "peers": [
                         "peer0.org1.example.com",

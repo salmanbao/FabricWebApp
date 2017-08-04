@@ -1,11 +1,10 @@
-#!/bin/bash -x
+#!/bin/bash +x
 #
 # Copyright IBM Corp. All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# TODO: Accept fabric-ca-server-config.yaml and cert/key pair as arguments
 
 #set -e
 
@@ -18,17 +17,16 @@ ORGS="\
 "
 
 # If true, uses both a root and intermediate CA
-# INTERMEDIATE_CA=false
 INTERMEDIATE_CA=true
+# INTERMEDIATE_CA=false
 
 # If true, recreate crypto if it already exists
 RECREATE=false
 
-# # Path to fabric CA executables
+# Path to fabric CA executables
 # FCAHOME=$GOPATH/src/github.com/hyperledger/fabric-ca
 # SERVER=$FCAHOME/bin/fabric-ca-server
 # CLIENT=$FCAHOME/bin/fabric-ca-client
-
 SERVER=fabric-ca-server
 CLIENT=fabric-ca-client
 
@@ -111,10 +109,6 @@ function setupOrg {
    intermediateCAPort=${args[3]}
    numNodes=${args[4]}
    IFS=$IFSBU
-#    # Copy the CA config file to the appropriate location
-#    mkdir -p $orgDir/ca/root
-#    cp /source-artifacts/ca.$orgName/fabric-ca-server-config.yaml $orgDir/ca/root/
-   predefinedConfigFile=/source-artifacts/ca.$orgName/fabric-ca-server-config.yaml
    # Start the root CA server
    startCA $orgDir/ca/root $rootCAPort $orgName
    # Enroll an admin user with the root CA
@@ -122,7 +116,6 @@ function setupOrg {
    adminHome=$usersDir/rootAdmin
    enroll $adminHome http://admin:adminpw@localhost:$rootCAPort $orgName
    if [ "$INTERMEDIATE_CA" == "true" ]; then
-      # TODO: Need to copy config file for intermediate CA
       # Start the intermediate CA server
       startCA $orgDir/ca/intermediate $intermediateCAPort $orgName http://admin:adminpw@localhost:$rootCAPort
       # Enroll an admin user with the intermediate CA
@@ -174,33 +167,20 @@ function startCA {
    orgName=$1; shift
    mkdir -p $homeDir
    export FABRIC_CA_SERVER_HOME=$homeDir
-#    cd $FABRIC_CA_SERVER_HOME
-
-   predefinedConfigFile=/source-artifacts/ca.$orgName/fabric-ca-server-config.yaml
-   cp $predefinedConfigFile $FABRIC_CA_SERVER_HOME
-
    if [ $# -gt 0 ]; then
-      $SERVER init -b ThisIsIgnored:ThisIsAlsoIgnored --config $FABRIC_CA_SERVER_HOME/fabric-ca-server-config.yaml
-#       $SERVER init --config fabric-ca-server-config.yaml
-#       $SERVER start -p $port -b admin:adminpw --config fabric-ca-server-config.yaml -u $1 $DEBUG > $FABRIC_CA_SERVER_HOME/server.log 2>&1&
-#       $SERVER start --config fabric-ca-server-config.yaml -p $port -u $1 $DEBUG > $FABRIC_CA_SERVER_HOME/server.log 2>&1&
-      $SERVER start -p $port -u $1 $DEBUG > $FABRIC_CA_SERVER_HOME/server.log 2>&1&
+      $SERVER start -p $port -b admin:adminpw -u $1 $DEBUG > $homeDir/server.log 2>&1&
    else
-      $SERVER init -b ThisIsIgnored:ThisIsAlsoIgnored --config $FABRIC_CA_SERVER_HOME/fabric-ca-server-config.yaml
-#       $SERVER init --config fabric-ca-server-config.yaml
-#       $SERVER start -p $port -b admin:adminpw --config fabric-ca-server-config.yaml $DEBUG > $FABRIC_CA_SERVER_HOME/server.log 2>&1&
-#       $SERVER start --config fabric-ca-server-config.yaml -p $port $DEBUG > $FABRIC_CA_SERVER_HOME/server.log 2>&1&
-      $SERVER start -p $port $DEBUG > $FABRIC_CA_SERVER_HOME/server.log 2>&1&
+      $SERVER start -p $port -b admin:adminpw $DEBUG > $homeDir/server.log 2>&1&
    fi
-   echo $! > $FABRIC_CA_SERVER_HOME/server.pid
+   echo $! > $homeDir/server.pid
    if [ $? -ne 0 ]; then
-      fatal "Failed to start server in $FABRIC_CA_SERVER_HOME"
+      fatal "Failed to start server in $homeDir"
    fi
-   debug "Starting CA server in $FABRIC_CA_SERVER_HOME on port $port ..."
+   debug "Starting CA server in $homeDir on port $port ..."
    sleep 1
-   checkCA $FABRIC_CA_SERVER_HOME $port
+   checkCA $homeDir $port
    # Get the TLS crypto for this CA
-   tlsEnroll $FABRIC_CA_SERVER_HOME $port $orgName
+   tlsEnroll $homeDir $port $orgName
 }
 
 # Make sure a CA server is running
@@ -241,13 +221,11 @@ function stopAllCAs {
 
 # Register a new user
 #    register <user> <password> <registrarHomeDir>
-# TODO: Add user and affiliation arguments
 function register {
-   find /generated-artifacts
    export FABRIC_CA_CLIENT_HOME=$3
    mkdir -p $3
    logFile=$3/register.log
-   $CLIENT register --id.name $1 --id.secret $2 --id.type user --id.affiliation affiliation0.department0 $DEBUG > $logFile 2>&1
+   $CLIENT register --id.name $1 --id.secret $2 --id.type user --id.affiliation org1 $DEBUG > $logFile 2>&1
    if [ $? -ne 0 ]; then
       fatal "Failed to register $1 with CA as $3; see $logFile"
    fi
@@ -289,11 +267,11 @@ function tlsEnroll {
    homeDir=$1
    port=$2
    orgName=$3
-   host=$(basename $homeDir)
+   host=$(basename $homeDir),$(basename $homeDir | cut -d'.' -f1)
    tlsDir=$homeDir/tls
    srcMSP=$tlsDir/msp
    dstMSP=$homeDir/msp
-   enroll $tlsDir http://admin:adminpw@localhost:$port $orgName -m $host --enrollment.profile tls
+   enroll $tlsDir http://admin:adminpw@localhost:$port $orgName --csr.hosts $host --enrollment.profile tls
    cp $srcMSP/signcerts/* $tlsDir/server.crt
    cp $srcMSP/keystore/* $tlsDir/server.key
    mkdir -p $dstMSP/keystore
@@ -320,12 +298,6 @@ function normalizeMSP {
    cacerts=$mspDir/cacerts
    intcerts=$mspDir/intermediatecerts
    signcerts=$mspDir/signcerts
-
-#    mkdir -p $admincerts
-#    mkdir -p $cacerts
-#    mkdir -p $intcerts
-#    mkdir -p $signcerts
-
    cacertsfname=$cacerts/ca.${orgName}-cert.pem
    if [ ! -f $cacertsfname ]; then
       mv $cacerts/* $cacertsfname
@@ -367,9 +339,11 @@ function getcacerts {
    export FABRIC_CA_CLIENT_HOME=$1
    $CLIENT getcacert -u $2 > $1/getcacert.out 2>&1
    if [ $? -ne 0 ]; then
-      fatal "Failed to get CA certificates $1 with intermediate CA at $2; see $logFile"
+      fatal "Failed to get CA certificates $1 with CA at $2; see $logFile"
    fi
-   debug "Loaded CA certificates into $1 from intermediate CA at $2"
+   mkdir $1/msp/tlscacerts
+   cp $1/msp/cacerts/* $1/msp/tlscacerts
+   debug "Loaded CA certificates into $1 from CA at $2"
 }
 
 # Print a fatal error message and exit
