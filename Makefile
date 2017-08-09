@@ -98,6 +98,15 @@ down-full:
 # 	@echo ""
 # 	docker images | grep -E "$(COMPOSE_PROJECT_NAME)|example.com" || true
 
+# Build the chaincode using the hyperledger/fabric-ccenv image.  This make target would be
+# used during chaincode development to quickly find and correct compile errors.
+build-chaincode:
+	docker-compose -f docker/build-chaincode.yaml up
+
+# Delete the volume created by the build-chaincode target.  This will not affect the production environment.
+rm-build-chaincode-state:
+	docker-compose -f docker/build-chaincode.yaml down && docker volume rm fabricwebapp_build_chaincode_volume
+
 # Delete the "state" volumes -- tmp dir (which contains the webserver's key store) and HFC key/value store in
 # home dir This can be done after `make down` to reset things to a "clean state", without needing to recompile go code or
 # run `npm install` from scratch.  The shell "or" with `true` is so this command never fails.
@@ -147,7 +156,7 @@ rm-chaincode-docker-resources:
 rm-all-generated-resources:
 	$(MAKE) down
 	$(MAKE) rm-state-volumes rm-node-modules rm-generated-artifacts rm-chaincode-docker-resources
-	$(MAKE) rm-webserver-env
+	$(MAKE) rm-webserver-env rm-build-chaincode-state
 
 # Alias for rm-all-generated-resources.  NOTE: USE WITH CAUTION!
 clean: rm-all-generated-resources

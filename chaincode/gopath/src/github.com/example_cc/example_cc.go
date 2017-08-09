@@ -65,43 +65,14 @@ type SimpleChaincode struct {
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response  {
     fmt.Println("########### example_cc Init ###########")
     _, args := stub.GetFunctionAndParameters()
-    var A, B string    // Entities
-    var Aval, Bval int // Asset holdings
-    var err error
 
     fmt.Printf("within Init : GetCreatorCommonName(stub): %v\n", GetCreatorCommonName(stub))
 
-    if len(args) != 4 {
-        return shim.Error("Incorrect number of arguments. Expecting 4")
-    }
-
-    // Initialize the chaincode
-    A = args[0]
-    Aval, err = strconv.Atoi(args[1])
-    if err != nil {
-        return shim.Error("Expecting integer value for asset holding")
-    }
-    B = args[2]
-    Bval, err = strconv.Atoi(args[3])
-    if err != nil {
-        return shim.Error("Expecting integer value for asset holding")
-    }
-    fmt.Printf("Aval = %d, Bval = %d\n", Aval, Bval)
-
-    // Write the state to the ledger
-    err = stub.PutState(A, []byte(strconv.Itoa(Aval)))
-    if err != nil {
-        return shim.Error(err.Error())
-    }
-
-    err = stub.PutState(B, []byte(strconv.Itoa(Bval)))
-    if err != nil {
-        return shim.Error(err.Error())
+    if len(args) != 0 {
+        return shim.Error("Incorrect number of arguments. Expecting 0")
     }
 
     return shim.Success(nil)
-
-
 }
 
 // Transaction makes payment of X units from A to B
@@ -111,8 +82,9 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
     fmt.Printf("within Invoke : GetCreatorCommonName(stub): %v\n", GetCreatorCommonName(stub))
 
-    if len(args) < 1 {
-        return shim.Error("Incorrect number of arguments. Expecting at least 1")
+    if function == "create_account" {
+        // Creates an account with the given name and initial balance
+        return t.create_account(stub, args)
     }
 
     if function == "delete" {
@@ -128,7 +100,31 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
         // Deletes an entity from its state
         return t.move(stub, args)
     }
-    return shim.Error("Unknown action, check the first argument, must be one of 'delete', 'query', or 'move'")
+    return shim.Error(fmt.Sprintf("Unknown action '%s', check the first argument, must be one of 'create_account', 'delete', 'query', or 'move'", function))
+}
+
+func (t *SimpleChaincode) create_account (stub shim.ChaincodeStubInterface, args []string) pb.Response {
+    if len(args) != 2 {
+        return shim.Error("Incorrect number of arguments.  Expecting 2; account_holder_name and initial_balance")
+    }
+
+    // Parse and validate the args.
+    account_holder_name := args[0]
+    initial_balance, err := strconv.Atoi(args[1])
+    if err != nil {
+        return shim.Error(fmt.Sprintf("Malformed initial_balance string \"%s\"; expecting nonnegative integer", args[1]))
+    }
+    if initial_balance < 0 {
+        return shim.Error(fmt.Sprintf("Invalid initial_balance %v; expecting nonnegative integer", initial_balance))
+    }
+
+    // Write the account balance to the ledger.
+    err = stub.PutState(account_holder_name, []byte(strconv.Itoa(initial_balance)))
+    if err != nil {
+        return shim.Error(err.Error())
+    }
+
+    return shim.Success(nil)
 }
 
 func (t *SimpleChaincode) move(stub shim.ChaincodeStubInterface, args []string) pb.Response {

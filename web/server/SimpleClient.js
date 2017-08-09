@@ -522,7 +522,8 @@ class SimpleClient {
     // - channel_name
     // - invoking_user_name
     // - invoking_user_org_name
-    // - args (the first of which should be the function name)
+    // - fcn
+    // - args
     // - query_only (a boolean indicating if the payload should just be returned after transaction
     //   proposal; i.e. the transaction won't be committed to the ledger).  Default is false.
     invoke__p (request) {

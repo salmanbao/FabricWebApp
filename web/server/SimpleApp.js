@@ -100,13 +100,35 @@ Promise.resolve()
             'org1': 'Admin'
         },
         fcn: 'init',
-        args: ['alice', '123', 'bob', '456']
+        args: []
     });
 })
 .then(() => {
     // This wait appears to be necessary -- is there some event that must be listened for
     // in order to wait for install/instantiate to complete?  Why doesn't it do that already?
     return sleep__p(5000)
+})
+.then(() => {
+    logger.debug('**************************************************');
+    logger.debug('**************************************************');
+    logger.debug('**************************************************');
+    const channel_name = 'mychannel';
+    return Promise.all([
+        simple_client.invoke__p({
+            channel_name: channel_name,
+            invoking_user_name: 'Admin',
+            invoking_user_org_name: 'org0',
+            fcn: 'create_account',
+            args: ['alice', '123']
+        }),
+        simple_client.invoke__p({
+            channel_name: channel_name,
+            invoking_user_name: 'Admin',
+            invoking_user_org_name: 'org1',
+            fcn: 'create_account',
+            args: ['bob', '456']
+        })
+    ]);
 })
 .then(() => {
     logger.debug('**************************************************');
@@ -127,10 +149,29 @@ Promise.resolve()
             invoking_user_org_name: 'org0',
             fcn: 'query',
             args: ['bob']
+        }),
+        simple_client.query__p({
+            channel_name: channel_name,
+            invoking_user_name: 'User1', // TEMP HACK
+            invoking_user_org_name: 'org1',
+            fcn: 'query',
+            args: ['alice']
+        }),
+        simple_client.query__p({
+            channel_name: channel_name,
+            invoking_user_name: 'User1', // TEMP HACK
+            invoking_user_org_name: 'org1',
+            fcn: 'query',
+            args: ['bob']
         })
     ]);
 })
-
+.then(results => {
+    assert(results[0] == '123', 'unexpected results');
+    assert(results[1] == '456', 'unexpected results');
+    assert(results[2] == '123', 'unexpected results');
+    assert(results[3] == '456', 'unexpected results');
+})
 
 
 

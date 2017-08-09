@@ -114,7 +114,7 @@ function setupOrg {
 #    # Copy the CA config file to the appropriate location
 #    mkdir -p $orgDir/ca/root
 #    cp /source-artifacts/ca.$orgName/fabric-ca-server-config.yaml $orgDir/ca/root/
-   predefinedConfigFile=/source-artifacts/ca.$orgName/fabric-ca-server-config.yaml
+#    predefinedConfigFile=/source-artifacts/ca.$orgName/fabric-ca-server-config.yaml
    # Start the root CA server
    startCA $orgDir/ca/root $rootCAPort $orgName
    # Enroll an admin user with the root CA
