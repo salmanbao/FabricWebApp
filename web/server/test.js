@@ -66,6 +66,8 @@ Promise.resolve()
 //     logger.debug('**************************************************');
 //     return simple_client.enroll_user_in_org__p('admin', 'adminpw', 'org1')
 // })
+
+
 .then(() => {
     logger.debug('**************************************************');
     logger.debug('**************************************************');
@@ -88,6 +90,8 @@ Promise.resolve()
         throw err;
     });
 })
+
+
 .then(() => {
     logger.debug('**************************************************');
     logger.debug('**************************************************');
@@ -140,28 +144,28 @@ Promise.resolve()
             channel_name: channel_name,
             invoking_user_name: 'User1', // TEMP HACK
             invoking_user_org_name: 'org0',
-            fcn: 'query',
+            fcn: 'query_balance',
             args: ['alice']
         }),
         simple_client.query__p({
             channel_name: channel_name,
             invoking_user_name: 'User1', // TEMP HACK
             invoking_user_org_name: 'org0',
-            fcn: 'query',
+            fcn: 'query_balance',
             args: ['bob']
         }),
         simple_client.query__p({
             channel_name: channel_name,
             invoking_user_name: 'User1', // TEMP HACK
             invoking_user_org_name: 'org1',
-            fcn: 'query',
+            fcn: 'query_balance',
             args: ['alice']
         }),
         simple_client.query__p({
             channel_name: channel_name,
             invoking_user_name: 'User1', // TEMP HACK
             invoking_user_org_name: 'org1',
-            fcn: 'query',
+            fcn: 'query_balance',
             args: ['bob']
         })
     ]);
@@ -176,21 +180,18 @@ Promise.resolve()
 
 
 // .then(() => {
-//     return simple_client.register_and_enroll_user_in_org__p('FancyUser', 'FancyPassword', 'FancyRole', 'org0', 'Admin');
+// //     return simple_client.register_user_in_org__p('FancyUser', 'FancyPassword', 'user', 'org1.department1', 'org1', 'Admin');
+//     return simple_client.enroll_user_in_org__p('admin', 'adminpw', 'org1');
 // })
-.then(() => {
-//     return simple_client.register_user_in_org__p('FancyUser', 'FancyPassword', 'user', 'org1.department1', 'org1', 'Admin');
-    return simple_client.enroll_user_in_org__p('admin', 'adminpw', 'org1');
-})
-.then(user => {
-    return simple_client.register_and_enroll_user_in_org__p('FancyUser', 'FancyPassword', 'user', 'org1.department1', 'org1', 'admin');
-})
+// .then(user => {
+//     return simple_client.register_and_enroll_user_in_org__p('FancyUser', 'FancyPassword', 'user', 'org1.department1', 'org1', 'admin');
+// })
 // .then(enrollment_secret => {
 //     logger.debug('register_user_in_org__p succeeded; enrollment_secret = "%s"', enrollment_secret);
 // })
-.then(() => {
-    logger.debug('enroll_user_in_org__p succeeded');
-})
+// .then(() => {
+//     logger.debug('enroll_user_in_org__p succeeded');
+// })
 
 
 // .then(() => {
@@ -228,14 +229,14 @@ Promise.resolve()
 //             channel_name: channel_name,
 //             invoking_user_name: 'Admin', // TEMP HACK
 //             invoking_user_org_name: 'org0',
-//             fcn: 'query',
+//             fcn: 'query_balance',
 //             args: ['alice']
 //         }),
 //         simple_client.query__p({
 //             channel_name: channel_name,
 //             invoking_user_name: 'Admin', // TEMP HACK
 //             invoking_user_org_name: 'org0',
-//             fcn: 'query',
+//             fcn: 'query_balance',
 //             args: ['bob']
 //         })
 //     ]);
@@ -250,7 +251,7 @@ Promise.resolve()
 //         channel_name: channel_name,
 //         invoking_user_name: 'Admin', // TEMP HACK
 //         invoking_user_org_name: 'org0',
-//         fcn: 'move',
+//         fcn: 'transfer',
 //         args: ['alice', 'bob', '20'],
 //         query_only: false
 //     });
@@ -262,14 +263,14 @@ Promise.resolve()
 //             channel_name: channel_name,
 //             invoking_user_name: 'Admin', // TEMP HACK
 //             invoking_user_org_name: 'org0',
-//             fcn: 'query',
+//             fcn: 'query_balance',
 //             args: ['alice']
 //         }),
 //         simple_client.query__p({
 //             channel_name: channel_name,
 //             invoking_user_name: 'Admin', // TEMP HACK
 //             invoking_user_org_name: 'org0',
-//             fcn: 'query',
+//             fcn: 'query_balance',
 //             args: ['bob']
 //         })
 //     ]);

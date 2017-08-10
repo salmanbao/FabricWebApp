@@ -196,7 +196,7 @@ services:
         cp ${COMPOSE_PROJECT_NAME}/web/server/package.json . && \
         npm install && \
         cd ${COMPOSE_PROJECT_NAME}/web/server && \
-        npm start
+        npm test
       "
     ports:
       - 4000:4000

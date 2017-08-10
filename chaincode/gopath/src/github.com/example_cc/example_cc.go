@@ -87,20 +87,20 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
         return t.create_account(stub, args)
     }
 
-    if function == "delete" {
+    if function == "delete_account" {
         // Deletes an entity from its state
-        return t.delete(stub, args)
+        return t.delete_account(stub, args)
     }
 
-    if function == "query" {
+    if function == "query_balance" {
         // queries an entity state
-        return t.query(stub, args)
+        return t.query_balance(stub, args)
     }
-    if function == "move" {
+    if function == "transfer" {
         // Deletes an entity from its state
-        return t.move(stub, args)
+        return t.transfer(stub, args)
     }
-    return shim.Error(fmt.Sprintf("Unknown action '%s', check the first argument, must be one of 'create_account', 'delete', 'query', or 'move'", function))
+    return shim.Error(fmt.Sprintf("Unknown action '%s', check the first argument, must be one of 'create_account', 'delete', 'query_balance', or 'transfer'", function))
 }
 
 func (t *SimpleChaincode) create_account (stub shim.ChaincodeStubInterface, args []string) pb.Response {
@@ -127,7 +127,7 @@ func (t *SimpleChaincode) create_account (stub shim.ChaincodeStubInterface, args
     return shim.Success(nil)
 }
 
-func (t *SimpleChaincode) move(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) transfer (stub shim.ChaincodeStubInterface, args []string) pb.Response {
     // must be an invoke
     var A, B string    // Entities
     var Aval, Bval int // Asset holdings
@@ -184,8 +184,8 @@ func (t *SimpleChaincode) move(stub shim.ChaincodeStubInterface, args []string) 
     return shim.Success(nil);
 }
 
-// Deletes an entity from state
-func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+// Deletes the account of the named user.
+func (t *SimpleChaincode) delete_account (stub shim.ChaincodeStubInterface, args []string) pb.Response {
     if len(args) != 1 {
         return shim.Error("Incorrect number of arguments. Expecting 1")
     }
@@ -201,8 +201,8 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
     return shim.Success(nil)
 }
 
-// Query callback representing the query of a chaincode
-func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+// Query the balance of an account with specified username.
+func (t *SimpleChaincode) query_balance (stub shim.ChaincodeStubInterface, args []string) pb.Response {
 
     var A string // Entities
     var err error

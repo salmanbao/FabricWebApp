@@ -1,5 +1,5 @@
 # PHONY targets have no dependencies and they will be built unconditionally upon request.
-.PHONY: generated-artifacts initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com initialize inspect-initialized-volumes up up-detached logs-follow down down-full rm-state-volumes rm-node-modules rm-webserver-env rm-chaincode-docker-resources clean
+.PHONY: generated-artifacts initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com initialize inspect-initialized-volumes up up-detached logs-follow down down-full down-chaincode down-chaincode-full rm-state-volumes rm-node-modules rm-webserver-env rm-chaincode-docker-resources clean
 
 # This is also hardcoded in .env, so if you change it here, you must change it there.  Note that
 # it must be in all-lowercase, as docker-compose changes it to lowercase anyway.
@@ -87,6 +87,21 @@ down:
 down-full:
 	docker-compose down -v
 
+# Bring down the chaincode containers
+down-chaincode:
+	docker rm dev-peer0.org0.example.com-mycc-v0 \
+	          dev-peer1.org0.example.com-mycc-v0 \
+	          dev-peer0.org1.example.com-mycc-v0 \
+	          dev-peer1.org1.example.com-mycc-v0; \
+	true
+
+down-chaincode-full: down-chaincode
+	docker rmi dev-peer0.org0.example.com-mycc-v0 \
+	           dev-peer1.org0.example.com-mycc-v0 \
+	           dev-peer0.org1.example.com-mycc-v0 \
+	           dev-peer1.org1.example.com-mycc-v0; \
+	true
+
 # # Shows all non-source resources that this project created that currently still exist.
 # # The shell "or" with `true` is so we don't receive the error code that find/grep produces when there are no matches.
 # show-all-generated-resources:
@@ -156,7 +171,7 @@ rm-chaincode-docker-resources:
 rm-all-generated-resources:
 	$(MAKE) down
 	$(MAKE) rm-state-volumes rm-node-modules rm-generated-artifacts rm-chaincode-docker-resources
-	$(MAKE) rm-webserver-env rm-build-chaincode-state
+	$(MAKE) rm-webserver-env rm-build-chaincode-state rm-chaincode-docker-resources
 
 # Alias for rm-all-generated-resources.  NOTE: USE WITH CAUTION!
 clean: rm-all-generated-resources
