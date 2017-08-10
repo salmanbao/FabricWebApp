@@ -2,8 +2,7 @@ version: '2'
 services:
 
   ca-base:
-    #image: hyperledger/fabric-ca:x86_64-1.0.0
-    image: hyperledger/fabric-ca:x86_64-1.0.1-snapshot-8b146a1
+    image: hyperledger/fabric-ca:x86_64-1.0.1-snapshot-843e159
     environment:
       # This is the path to the persistent storage for the CA.
       - FABRIC_CA_HOME=/var/hyperledger/ca

@@ -27,8 +27,7 @@ services:
     # TODO: This is where the root CA cert/key would be used, and it wouldn't make it onto any publicly accessible server.
     # See https://jamielinux.com/docs/openssl-certificate-authority/create-the-root-pair.html
     crypto_config:
-        #image: hyperledger/fabric-ca:x86_64-1.0.0
-        image: hyperledger/fabric-ca:x86_64-1.0.1-snapshot-8b146a1
+        image: hyperledger/fabric-ca:x86_64-1.0.1-snapshot-843e159
         volumes:
             - ../source-artifacts:/source-artifacts:ro
             - generated_artifacts__volume:/generated-artifacts:rw
