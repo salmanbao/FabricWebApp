@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "A balance-transfer example node program to demonstrate using NodeSDK apis with alpha based fabric images",
   "scripts": {
+    "start": "DEBUG=hfc node app.js",
     "test": "DEBUG=hfc node test.js"
   },
   "keywords": [
@@ -16,6 +17,7 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
+    "express": "^4.15.2",
     "fabric-ca-client": "1.0.0",
     "fabric-client": "1.0.0",
     "winston": "^2.2.0"

@@ -196,10 +196,10 @@ services:
         cp ${COMPOSE_PROJECT_NAME}/web/server/package.json . && \
         npm install && \
         cd ${COMPOSE_PROJECT_NAME}/web/server && \
-        npm test
+        npm start
       "
     ports:
-      - 4000:4000
+      - 3000:3000
     volumes:
       # This is to contain and persist temp storage (key store); TODO: Combine this and webserver_homedir into one.
       - webserver_tmp:/tmp:rw

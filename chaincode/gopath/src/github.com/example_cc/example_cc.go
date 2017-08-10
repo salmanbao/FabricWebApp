@@ -118,10 +118,19 @@ func (t *SimpleChaincode) create_account (stub shim.ChaincodeStubInterface, args
         return shim.Error(fmt.Sprintf("Invalid initial_balance %v; expecting nonnegative integer", initial_balance))
     }
 
+    // Check for an existing account
+    existing_account_state,err := stub.GetState(account_holder_name)
+    if err != nil {
+        return shim.Error(err.Error()) // TODO: Better error message
+    }
+    if existing_account_state != nil {
+        return shim.Error(fmt.Sprintf("Could not create account named \"%s\"; account already exists", account_holder_name))
+    }
+
     // Write the account balance to the ledger.
     err = stub.PutState(account_holder_name, []byte(strconv.Itoa(initial_balance)))
     if err != nil {
-        return shim.Error(err.Error())
+        return shim.Error(err.Error()) // TODO: Better error message
     }
 
     return shim.Success(nil)
@@ -219,9 +228,8 @@ func (t *SimpleChaincode) query_balance (stub shim.ChaincodeStubInterface, args 
         jsonResp := "{\"Error\":\"Failed to get state for " + A + "\"}"
         return shim.Error(jsonResp)
     }
-
     if Avalbytes == nil {
-        jsonResp := "{\"Error\":\"Nil amount for " + A + "\"}"
+        jsonResp := "{\"Error\":\"Account named \"" + A + "\" does not exist\"}"
         return shim.Error(jsonResp)
     }
 
