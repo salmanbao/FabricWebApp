@@ -77,7 +77,7 @@ function check_request_query_for_keys (req_query, expected_keys) {
     }
 }
 
-// app.use('/', express.static(path.join(__dirname, '../client')));
+app.use('/', express.static(path.join(__dirname, '../client')));
 
 const temp_hardcoded_channel_name = 'mychannel';
 
