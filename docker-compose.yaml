@@ -12,11 +12,12 @@ volumes:
   #com_example_ca__volume:
   com_example_orderer__volume:
 
-  com_example_www__volume:
+  com_example_www__config_volume:
+  com_example_www__home_volume:
+  com_example_www__node_modules_volume:
 
   webserver_homedir:
   webserver_homedir_node_modules:
-  webserver_tmp:
 
 services:
 
@@ -28,10 +29,6 @@ services:
     volumes:
       # This is the persistent storage volume for the CA.
       - com_example_org0_ca__volume:/var/hyperledger/ca:rw
-      ## This is the directory that contains the pre-loaded keys for the CA.
-      #- ./generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/root/:/etc/hyperledger/fabric-ca-server:rw
-      ## This is the CA configuration file.
-      #- ./source-artifacts/ca.org0.example.com/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml:ro
     # This is not necessary -- just a little self-documenting hint that this service is being offered on port 7054
     ports:
       - 7054:7054
@@ -44,10 +41,6 @@ services:
     volumes:
       # This is the persistent storage volume for the CA.
       - com_example_org0_ca__volume:/var/hyperledger/ca:rw
-      ## This is the directory that contains the pre-loaded keys for the CA.
-      #- ./generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server:rw
-      ## This is the CA configuration file.
-      #- ./source-artifacts/ca.org1.example.com/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml:ro
     # This is really only necessary if you want to access this service from the host.
     # Configurations within these docker-compose services should just use the native port 7054 (since
     # each service has its own IP address).  In particular, within the docker services, this
@@ -82,12 +75,6 @@ services:
             orderer
         "
     volumes:
-      #- ./generated-artifacts/orderer.genesis.block:/etc/hyperledger/configtx/orderer.genesis.block:ro
-      # TODO: Try to make this read-only, and then combine the two mount directives?
-      # The msp and tls subdirs are the only subdirs, so one mount directive would
-      # be equivalent as long as read-only is ok for msp.
-      #- ./generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/etc/hyperledger/orderer/msp:ro
-      #- ./generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/etc/hyperledger/orderer/tls:ro
       - com_example_orderer__volume:/var/hyperledger/orderer:rw
     ports:
       - 7050:7050
@@ -181,11 +168,8 @@ services:
 
   webserver:
     container_name: www.example.com
-    image: ${COMPOSE_PROJECT_NAME}_webserver-env:v0.0
-    build:
-      context: .
-      dockerfile: docker/webserver-env:v0.0.Dockerfile
-    working_dir: /home/minion
+    image: hyperledger/fabric-baseimage:x86_64-0.3.0
+    working_dir: /var/hyperledger/www
     environment:
       ## This is what enables full debug output in the fabric-sdk-node modules.
       #- 'HFC_LOGGING={"debug":"console"}'
@@ -201,16 +185,14 @@ services:
     ports:
       - 3000:3000
     volumes:
-      # This is to contain and persist temp storage (key store); TODO: Combine this and webserver_homedir into one.
-      - webserver_tmp:/tmp:rw
-      # This is to contain and persist other temp storage; TODO: Combine this and webserver_tmp into one.
-      - webserver_homedir:/home/minion:rw
+      # This is to contain and persist the webserver keystore
+      - com_example_www__home_volume:/var/hyperledger/www:rw
       # This is to contain and persist node_modules
-      - webserver_homedir_node_modules:/home/minion/node_modules:rw
+      - com_example_www__node_modules_volume:/var/hyperledger/www/node_modules:rw
+      # Mount the volume with config/crypto materials (this probably has to be mounted after /var/hyperledger/www)
+      - com_example_www__config_volume:/var/hyperledger/www/config:ro
       # Mount this project's files.  TODO: Mount only the minimal necessary files (move necessary certs to under web/server)
-      - .:/home/minion/${COMPOSE_PROJECT_NAME}:ro
-      # Mount the volume with config/crypto materials
-      - com_example_www__volume:/var/hyperledger/www:ro
+      - .:/var/hyperledger/www/${COMPOSE_PROJECT_NAME}:ro
     depends_on:
       - ca.org0.example.com
       - ca.org1.example.com

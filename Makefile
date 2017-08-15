@@ -1,5 +1,5 @@
 # PHONY targets have no dependencies and they will be built unconditionally upon request.
-.PHONY: generated-artifacts initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com initialize inspect-initialized-volumes up up-detached logs-follow down down-full down-chaincode down-chaincode-full rm-state-volumes rm-node-modules rm-webserver-env rm-chaincode-docker-resources clean
+.PHONY: generated-artifacts initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com initialize inspect-initialized-volumes up up-detached logs-follow down down-full down-chaincode down-chaincode-full rm-state-volumes rm-node-modules rm-chaincode-docker-resources clean
 
 # This is also hardcoded in .env, so if you change it here, you must change it there.  Note that
 # it must be in all-lowercase, as docker-compose changes it to lowercase anyway.
@@ -9,7 +9,7 @@ GENERATED_ARTIFACTS_VOLUME := $(COMPOSE_PROJECT_NAME)_generated_artifacts__volum
 COM_EXAMPLE_ORG0_VOLUMES := $(COMPOSE_PROJECT_NAME)_com_example_org0_ca__volume $(COMPOSE_PROJECT_NAME)_com_example_org0_peer0__volume $(COMPOSE_PROJECT_NAME)_com_example_org0_peer1__volume
 COM_EXAMPLE_ORG1_VOLUMES := $(COMPOSE_PROJECT_NAME)_com_example_org1_ca__volume $(COMPOSE_PROJECT_NAME)_com_example_org1_peer0__volume $(COMPOSE_PROJECT_NAME)_com_example_org1_peer1__volume
 COM_EXAMPLE_VOLUMES := $(COMPOSE_PROJECT_NAME)_com_example_ca__volume $(COMPOSE_PROJECT_NAME)_com_example_orderer__volume
-COM_EXAMPLE_WWW_VOLUMES := $(COMPOSE_PROJECT_NAME)_com_example_www__volume
+COM_EXAMPLE_WWW_VOLUMES := $(COMPOSE_PROJECT_NAME)_com_example_www__config_volume
 
 # Default make rule
 all:
@@ -131,23 +131,18 @@ rm-state-volumes:
 	$(COM_EXAMPLE_ORG1_VOLUMES) \
 	$(COM_EXAMPLE_VOLUMES) \
 	$(COM_EXAMPLE_WWW_VOLUMES) \
-	$(COMPOSE_PROJECT_NAME)_webserver_tmp \
-	$(COMPOSE_PROJECT_NAME)_webserver_homedir \
+	$(COMPOSE_PROJECT_NAME)_com_example_www__home_volume \
 	|| true
 
 # Delete the node_modules dir, in case things get inexplicably screwy and you just feel like you have to nuke something.
 # The shell "or" with `true` is so this command never fails.
 rm-node-modules:
-	docker volume rm $(COMPOSE_PROJECT_NAME)_webserver_homedir_node_modules || true
+	docker volume rm $(COMPOSE_PROJECT_NAME)_com_example_www__node_modules_volume || true
 
 # Delete generated_artifacts__volume.  This contains all cryptographic material and some channel config material.
 # BE REALLY CAREFUL ABOUT RUNNING THIS ONE, BECAUSE IT CONTAINS YOUR ROOT CA CERTS/KEYS.
 rm-generated-artifacts: initialize-down
 	docker volume rm $(GENERATED_ARTIFACTS_VOLUME) || true
-
-# Delete the docker image that the webserver uses.  The shell "or" with `true` is so this command never fails.
-rm-webserver-env:
-	docker rmi $(COMPOSE_PROJECT_NAME)_webserver-env:v0.0 || true
 
 # Delete the containers and images created by the peers that run chaincode.  This will be necessary if the chaincode
 # is changed, because new docker images will have to be built with the new chaincode.  If the chaincode has not changed,
@@ -171,7 +166,7 @@ rm-chaincode-docker-resources:
 rm-all-generated-resources:
 	$(MAKE) down
 	$(MAKE) rm-state-volumes rm-node-modules rm-generated-artifacts rm-chaincode-docker-resources
-	$(MAKE) rm-webserver-env rm-build-chaincode-state rm-chaincode-docker-resources
+	$(MAKE) rm-build-chaincode-state rm-chaincode-docker-resources
 
 # Alias for rm-all-generated-resources.  NOTE: USE WITH CAUTION!
 clean: rm-all-generated-resources

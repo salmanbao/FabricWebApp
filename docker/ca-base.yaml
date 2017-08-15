@@ -7,16 +7,6 @@ services:
       # This is the path to the persistent storage for the CA.
       - FABRIC_CA_HOME=/var/hyperledger/ca
       - FABRIC_CA_LOGGING_LEVEL=$GENERAL_LOGGING_LEVEL
-    # The `ls -1 .../*-cert.pem` and `ls -1 .../*_sk` commands are a hack in order to get the hostname-dependent cert filename
-    # and randomly generated private key filename.  Not sure why the filename is random.  Maybe this is a security feature.
-    # If the config file $FABRIC_CA_HOME/fabric-ca-server-config.yaml exists, then the -b flag is ignored.
-    #command: sh -c 'fabric-ca-server start --ca.certfile `ls -1 /etc/hyperledger/fabric-ca-server/*-cert.pem` --ca.keyfile `ls -1 /etc/hyperledger/fabric-ca-server/*_sk` -b admin:adminpw -d'
-    #command: |
-      #bash -c "
-        #find /var/hyperledger/fabric-ca-server
-        #sh -c 'fabric-ca-server start -d -b ignore:ignorepw --config fabric-ca-server-config.yaml'
-      #"
-    #command: fabric-ca-server start --boot ignore:ignore --config /var/hyperledger/ca/fabric-ca-server-config.yaml
     command: |
         bash -cx "
             find /var/hyperledger/ca

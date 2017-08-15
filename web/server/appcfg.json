@@ -2,12 +2,12 @@
     "host":"webserver",
     "port":"4000",
     "GOPATH":"../../chaincode/gopath",
-    "kvs_path_prefix":"/tmp/FabricWebApp/kvs/organization/",
-    "cryptoSuite_path_prefix":"/tmp/FabricWebApp/cryptoSuite/",
+    "kvs_path_prefix":"/var/hyperledger/www/tmp/FabricWebApp/kvs/organization/",
+    "cryptoSuite_path_prefix":"/var/hyperledger/www/tmp/FabricWebApp/cryptoSuite/",
     "eventWaitTime":"30000",
     "channels": {
         "mychannel": {
-            "configtx_path": "/var/hyperledger/www/mychannel.tx",
+            "configtx_path": "/var/hyperledger/www/config/mychannel.tx",
             "chaincode": {
                 "id": "mycc",
                 "version": "v0",
