@@ -100,12 +100,14 @@ services:
     com_example__initialize:
         image: hyperledger/fabric-baseos:x86_64-0.3.1
         volumes:
+            - ../source-artifacts:/source-artifacts:ro
             - generated_artifacts__volume:/generated-artifacts:ro
             - com_example_ca__volume:/var/hyperledger/ca:rw
             - com_example_orderer__volume:/var/hyperledger/orderer:rw
         command: |
             bash -cx "
                 cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/ca/intermediate/* /var/hyperledger/ca/
+                cp /source-artifacts/orderer.example.com/orderer.yaml /var/hyperledger/orderer/
                 cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/* /var/hyperledger/orderer/
                 cp /generated-artifacts/orderer.genesis.block /var/hyperledger/orderer/
             "
