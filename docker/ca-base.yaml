@@ -7,6 +7,10 @@ services:
       # This is the path to the persistent storage for the CA.
       - FABRIC_CA_HOME=/var/hyperledger/ca
       - FABRIC_CA_LOGGING_LEVEL=$GENERAL_LOGGING_LEVEL
+
+      - FABRIC_CA_SERVER_TLS_ENABLED=$TLS_ENABLED
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/var/hyperledger/ca/tls/server.crt
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/var/hyperledger/ca/tls/server.key
     command: |
         bash -cx "
             find /var/hyperledger/ca

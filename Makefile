@@ -1,5 +1,5 @@
 # PHONY targets have no dependencies and they will be built unconditionally upon request.
-.PHONY: generated-artifacts initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com initialize inspect-initialized-volumes up up-detached logs-follow down down-full down-chaincode down-chaincode-full rm-state-volumes rm-node-modules rm-chaincode-docker-resources clean
+.PHONY: generated-artifacts initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com initialize inspect-initialized-volumes up up-detached logs-follow down down-full down-chaincode down-chaincode-full show-all-generated-resources rm-state-volumes rm-node-modules rm-chaincode-docker-resources clean
 
 # This is also hardcoded in .env, so if you change it here, you must change it there.  Note that
 # it must be in all-lowercase, as docker-compose changes it to lowercase anyway.
@@ -102,21 +102,20 @@ down-chaincode-full: down-chaincode
 	           dev-peer1.org1.example.com-mycc-v0; \
 	true
 
-# # Shows all non-source resources that this project created that currently still exist.
-# # The shell "or" with `true` is so we don't receive the error code that find/grep produces when there are no matches.
-# show-all-generated-resources:
-# 	find generated-artifacts || true
-# 	@echo ""
-# 	docker ps -a | grep example.com || true
-# 	@echo ""
-# 	docker volume ls | grep $(COMPOSE_PROJECT_NAME) || true
-# 	@echo ""
-# 	docker images | grep -E "$(COMPOSE_PROJECT_NAME)|example.com" || true
+# Shows all non-source resources that this project created that currently still exist.
+# The shell "or" with `true` is so we don't receive the error code that find/grep produces when there are no matches.
+show-all-generated-resources:
+	docker ps -a | grep example.com || true
+	@echo ""
+	docker volume ls | grep $(COMPOSE_PROJECT_NAME)_ || true
+	@echo ""
+	docker images | grep -E "$(COMPOSE_PROJECT_NAME)|example.com" || true
 
 # Build the chaincode using the hyperledger/fabric-ccenv image.  This make target would be
 # used during chaincode development to quickly find and correct compile errors.
 build-chaincode:
 	docker-compose -f docker/build-chaincode.yaml up
+	docker-compose -f docker/build-chaincode.yaml down
 
 # Delete the volume created by the build-chaincode target.  This will not affect the production environment.
 rm-build-chaincode-state:

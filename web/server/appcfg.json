@@ -1,6 +1,4 @@
 {
-    "host":"webserver",
-    "port":"4000",
     "GOPATH":"../../chaincode/gopath",
     "kvs_path_prefix":"/var/hyperledger/www/tmp/FabricWebApp/kvs/organization/",
     "cryptoSuite_path_prefix":"/var/hyperledger/www/tmp/FabricWebApp/cryptoSuite/",

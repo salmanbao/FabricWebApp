@@ -45,7 +45,7 @@ const logger = new(winston.Logger)({
 
 // ./netcfg.json is the read-only configuration for peer network
 // ./appcfg.json is the read-only configuration for application
-const simple_client = new SimpleClient(require('./netcfg.json'), require('./appcfg.json'));
+const simple_client = new SimpleClient(require('./netcfg.json'), require('./appcfg.json'), Boolean(JSON.parse(process.env.TLS_ENABLED)));
 
 // TODO: Move this to util.js
 function arrays_are_equal_as_sets (lhs_array, rhs_array) {

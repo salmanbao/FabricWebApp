@@ -121,29 +121,29 @@ services:
         # Copy user crypto materials except for the rootAdmin users (i.e. the admin accounts of the root CAs).
         command: |
             bash -cx "
+                mkdir -p /var/hyperledger/www/config/crypto-config/example.com/trusted-roots/
                 mkdir -p /var/hyperledger/www/config/crypto-config/example.com/users/
 
+                cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/ca/root/ca-cert.pem /var/hyperledger/www/config/crypto-config/example.com/trusted-roots/
                 cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/users/Admin@example.com /var/hyperledger/www/config/crypto-config/example.com/users/
                 cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/users/User1@example.com /var/hyperledger/www/config/crypto-config/example.com/users/
 
+                mkdir -p /var/hyperledger/www/config/crypto-config/org0.example.com/trusted-roots/
                 mkdir -p /var/hyperledger/www/config/crypto-config/org0.example.com/users/
 
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/root/ca-cert.pem /var/hyperledger/www/config/crypto-config/org0.example.com/trusted-roots/
                 cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/Admin@org0.example.com /var/hyperledger/www/config/crypto-config/org0.example.com/users/
                 cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/User1@org0.example.com /var/hyperledger/www/config/crypto-config/org0.example.com/users/
 
+                mkdir -p /var/hyperledger/www/config/crypto-config/org1.example.com/trusted-roots/
                 mkdir -p /var/hyperledger/www/config/crypto-config/org1.example.com/users/
 
+                cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/root/ca-cert.pem /var/hyperledger/www/config/crypto-config/org1.example.com/trusted-roots/
                 cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com /var/hyperledger/www/config/crypto-config/org1.example.com/users/
                 cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com /var/hyperledger/www/config/crypto-config/org1.example.com/users/
 
                 cp /generated-artifacts/mychannel.tx /var/hyperledger/www/config/
             "
-                #mkdir -p /var/hyperledger/www/config/crypto-config/example.com/trusted-roots/
-                #cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/ca/root/ca-cert.pem /var/hyperledger/www/config/crypto-config/example.com/trusted-roots/
-                #mkdir -p /var/hyperledger/www/config/crypto-config/org0.example.com/trusted-roots/
-                #cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/root/ca-cert.pem /var/hyperledger/www/config/crypto-config/org0.example.com/trusted-roots/
-                #mkdir -p /var/hyperledger/www/config/crypto-config/org1.example.com/trusted-roots/
-                #cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/root/ca-cert.pem /var/hyperledger/www/config/crypto-config/org1.example.com/trusted-roots/
                 #cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/users/intermediateAdmin /var/hyperledger/www/config/crypto-config/example.com/users/
                 #cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/intermediateAdmin /var/hyperledger/www/config/crypto-config/org0.example.com/users/
                 #cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/intermediateAdmin /var/hyperledger/www/config/crypto-config/org1.example.com/users/
