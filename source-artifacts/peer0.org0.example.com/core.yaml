@@ -283,7 +283,7 @@ vm:
 
         # Enables/disables the standard out/err from chaincode containers for
         # debugging purposes
-        attachStdout: false
+        attachStdout: true
 
         # Parameters on creating docker container.
         # Container may be efficiently created using ipam & dns-server for cluster
