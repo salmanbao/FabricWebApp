@@ -2,7 +2,7 @@ version: '2'
 services:
 
   peer-base:
-    image: hyperledger/fabric-peer:x86_64-1.0.0
+    image: hyperledger/fabric-peer:x86_64-1.0.1
     environment:
       - FABRIC_CFG_PATH=/var/hyperledger/peer
       - CORE_LOGGING_PEER=$GENERAL_LOGGING_LEVEL

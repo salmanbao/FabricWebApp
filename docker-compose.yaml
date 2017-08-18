@@ -50,7 +50,7 @@ services:
 
   orderer.example.com:
     container_name: orderer.example.com
-    image: hyperledger/fabric-orderer:x86_64-1.0.0
+    image: hyperledger/fabric-orderer:x86_64-1.0.1
     environment:
       - FABRIC_CFG_PATH=/var/hyperledger/orderer
       - ORDERER_GENERAL_LOGLEVEL=$GENERAL_LOGGING_LEVEL
