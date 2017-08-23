@@ -152,10 +152,7 @@ rm-chaincode-docker-resources:
 	          dev-peer1.org0.example.com-mycc-v0 \
 	          dev-peer0.org1.example.com-mycc-v0 \
 	          dev-peer1.org1.example.com-mycc-v0; \
-	docker rmi dev-peer0.org0.example.com-mycc-v0 \
-	           dev-peer1.org0.example.com-mycc-v0 \
-	           dev-peer0.org1.example.com-mycc-v0 \
-	           dev-peer1.org1.example.com-mycc-v0; \
+	docker images | egrep dev-peer.*example.com | awk '{ print $$1 }' | xargs docker rmi -f; \
 	true
 
 # Deletes all non-source resources that this project created that currently still exist.  This should
