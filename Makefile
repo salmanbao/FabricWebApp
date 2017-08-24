@@ -56,7 +56,10 @@ initialize-www.example.com:
 	docker volume inspect $(COM_EXAMPLE_WWW_VOLUMES)
 
 # Copies necessary materials from generated_artifacts__volume to the volumes for various peers/orderers/etc.
-initialize: initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com
+# The -j1 is important here, otherwise docker creates multiple networks named fabricwebapp_default
+# due to idiotic design in docker -- https://github.com/moby/moby/issues/18864
+initialize:
+	$(MAKE) -j1 initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com
 	docker-compose -f docker/initialize.yaml down
 
 # Brings down the services defined in docker/initialize.yaml
