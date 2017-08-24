@@ -12,8 +12,8 @@ volumes:
     com_example_org1_peer0__volume:
     com_example_org1_peer1__volume:
 
-    com_example_ca__volume:
-    com_example_orderer__volume:
+    com_example_org2_ca__volume:
+    com_example_org2_orderer__volume:
 
     com_example_www__config_volume:
 
@@ -57,21 +57,21 @@ services:
             "
                 #cp /source-artifacts/ca.org1.example.com/fabric-ca-server-config.yaml /var/hyperledger/ca/
 
-    com_example__initialize:
+    com_example_org2__initialize:
         image: hyperledger/fabric-baseos:x86_64-0.3.1
         volumes:
             - ../source-artifacts:/source-artifacts:ro
             - generated_artifacts__volume:/generated-artifacts:ro
-            - com_example_ca__volume:/var/hyperledger/ca:rw
-            - com_example_orderer__volume:/var/hyperledger/orderer:rw
+            - com_example_org2_ca__volume:/var/hyperledger/ca:rw
+            - com_example_org2_orderer__volume:/var/hyperledger/orderer:rw
         command: |
             bash -cx "
-                cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/ca/intermediate/* /var/hyperledger/ca/
-                cp /source-artifacts/orderer.example.com/orderer.yaml /var/hyperledger/orderer/
-                cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/* /var/hyperledger/orderer/
+                cp -r /generated-artifacts/crypto-config/ordererOrganizations/org2.example.com/ca/intermediate/* /var/hyperledger/ca/
+                cp /source-artifacts/orderer.org2.example.com/orderer.yaml /var/hyperledger/orderer/
+                cp -r /generated-artifacts/crypto-config/ordererOrganizations/org2.example.com/orderers/orderer.org2.example.com/* /var/hyperledger/orderer/
                 cp /generated-artifacts/orderer.genesis.block /var/hyperledger/orderer/
             "
-                #cp /source-artifacts/ca.example.com/fabric-ca-server-config.yaml /var/hyperledger/ca/
+                #cp /source-artifacts/ca.org2.example.com/fabric-ca-server-config.yaml /var/hyperledger/ca/
 
     com_example_www__initialize:
         image: hyperledger/fabric-baseos:x86_64-0.3.1
@@ -81,12 +81,12 @@ services:
         # Copy user crypto materials except for the rootAdmin users (i.e. the admin accounts of the root CAs).
         command: |
             bash -cx "
-                mkdir -p /var/hyperledger/www/config/crypto-config/example.com/trusted-roots/
-                mkdir -p /var/hyperledger/www/config/crypto-config/example.com/users/
+                mkdir -p /var/hyperledger/www/config/crypto-config/org2.example.com/trusted-roots/
+                mkdir -p /var/hyperledger/www/config/crypto-config/org2.example.com/users/
 
-                cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/ca/root/ca-cert.pem /var/hyperledger/www/config/crypto-config/example.com/trusted-roots/
-                cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/users/Admin@example.com /var/hyperledger/www/config/crypto-config/example.com/users/
-                cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/users/User1@example.com /var/hyperledger/www/config/crypto-config/example.com/users/
+                cp -r /generated-artifacts/crypto-config/ordererOrganizations/org2.example.com/ca/root/ca-cert.pem /var/hyperledger/www/config/crypto-config/org2.example.com/trusted-roots/
+                cp -r /generated-artifacts/crypto-config/ordererOrganizations/org2.example.com/users/Admin@org2.example.com /var/hyperledger/www/config/crypto-config/org2.example.com/users/
+                cp -r /generated-artifacts/crypto-config/ordererOrganizations/org2.example.com/users/User1@org2.example.com /var/hyperledger/www/config/crypto-config/org2.example.com/users/
 
                 mkdir -p /var/hyperledger/www/config/crypto-config/org0.example.com/trusted-roots/
                 mkdir -p /var/hyperledger/www/config/crypto-config/org0.example.com/users/
@@ -104,7 +104,7 @@ services:
 
                 cp /generated-artifacts/mychannel.tx /var/hyperledger/www/config/
             "
-                #cp -r /generated-artifacts/crypto-config/ordererOrganizations/example.com/users/intermediateAdmin /var/hyperledger/www/config/crypto-config/example.com/users/
+                #cp -r /generated-artifacts/crypto-config/ordererOrganizations/org2.example.com/users/intermediateAdmin /var/hyperledger/www/config/crypto-config/org2.example.com/users/
                 #cp -r /generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/intermediateAdmin /var/hyperledger/www/config/crypto-config/org0.example.com/users/
                 #cp -r /generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/intermediateAdmin /var/hyperledger/www/config/crypto-config/org1.example.com/users/
 

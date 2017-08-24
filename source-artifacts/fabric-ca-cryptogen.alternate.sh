@@ -11,7 +11,7 @@
 # Organization info where each line is of the form:
 #    <type>:<orgName>:<rootCAPort>:<intermediateCAPort>:<numOrderersOrPeers>
 ORGS="\
-   orderer:example.com:7054:7055:1 \
+   orderer:org2.example.com:7054:7055:1 \
    peer:org0.example.com:7056:7057:2 \
    peer:org1.example.com:7058:7059:2 \
 "
@@ -23,10 +23,7 @@ INTERMEDIATE_CA=true
 # If true, recreate crypto if it already exists
 RECREATE=false
 
-# Path to fabric CA executables
-# FCAHOME=$GOPATH/src/github.com/hyperledger/fabric-ca
-# SERVER=$FCAHOME/bin/fabric-ca-server
-# CLIENT=$FCAHOME/bin/fabric-ca-client
+# Path to fabric CA executables (to be run from within hyperledger/fabric-ca docker image)
 SERVER=fabric-ca-server
 CLIENT=fabric-ca-client
 
@@ -49,7 +46,6 @@ function main {
    echo "#################################################################"
    echo "Checking executables ..."
    mydir=`pwd`
-#    checkExecutables
    cd $mydir
    if [ -d $CDIR ]; then
       echo "Cleaning up ..."
@@ -62,29 +58,6 @@ function main {
    stopAllCAs
    echo "Complete"
 }
-
-# # Check and build executables as needed
-# function checkExecutables {
-#    if [ ! -d $FCAHOME ]; then
-#       fatal "Directory does not exist: $FCAHOME"
-#    fi
-#    if [ ! -x $SERVER ]; then
-#       dir=`pwd`
-#       cd $FCAHOME
-#       make fabric-ca-server
-#       if [ $? -ne 0 ]; then
-#          fatal "Failed to build $SERVER"
-#       fi
-#    fi
-#    if [ ! -x $CLIENT ]; then
-#       dir=`pwd`
-#       cd $FCAHOME
-#       make fabric-ca-client
-#       if [ $? -ne 0 ]; then
-#          fatal "Failed to build $CLIENT"
-#       fi
-#    fi
-# }
 
 # Setup orderer and peer organizations
 function setupOrgs {

@@ -1,5 +1,5 @@
 # PHONY targets have no dependencies and they will be built unconditionally upon request.
-.PHONY: generated-artifacts initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com initialize inspect-initialized-volumes up up-detached logs-follow down down-full down-chaincode down-chaincode-full show-all-generated-resources rm-state-volumes rm-node-modules rm-chaincode-docker-resources clean
+.PHONY: generated-artifacts initialization-org0.example.com initialization-org1.example.com initialization-org2.example.com initialization-www.example.com initialization inspect-initialized-volumes up up-detached logs-follow down down-full down-chaincode down-chaincode-full show-all-generated-resources rm-state-volumes rm-node-modules rm-chaincode-docker-resources clean
 
 # This is also hardcoded in .env, so if you change it here, you must change it there.  Note that
 # it must be in all-lowercase, as docker-compose changes it to lowercase anyway.
@@ -8,7 +8,7 @@ COMPOSE_PROJECT_NAME := fabricwebapp
 GENERATED_ARTIFACTS_VOLUME := $(COMPOSE_PROJECT_NAME)_generated_artifacts__volume
 COM_EXAMPLE_ORG0_VOLUMES := $(COMPOSE_PROJECT_NAME)_com_example_org0_ca__volume $(COMPOSE_PROJECT_NAME)_com_example_org0_peer0__volume $(COMPOSE_PROJECT_NAME)_com_example_org0_peer1__volume
 COM_EXAMPLE_ORG1_VOLUMES := $(COMPOSE_PROJECT_NAME)_com_example_org1_ca__volume $(COMPOSE_PROJECT_NAME)_com_example_org1_peer0__volume $(COMPOSE_PROJECT_NAME)_com_example_org1_peer1__volume
-COM_EXAMPLE_VOLUMES := $(COMPOSE_PROJECT_NAME)_com_example_ca__volume $(COMPOSE_PROJECT_NAME)_com_example_orderer__volume
+COM_EXAMPLE_ORG2_VOLUMES := $(COMPOSE_PROJECT_NAME)_com_example_org2_ca__volume $(COMPOSE_PROJECT_NAME)_com_example_org2_orderer__volume
 COM_EXAMPLE_WWW_VOLUMES := $(COMPOSE_PROJECT_NAME)_com_example_www__config_volume
 
 # Default make rule
@@ -27,28 +27,28 @@ generated-artifacts:
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
 
 # TODO: Put failsafes in to prevent calling this twice?
-initialize-org0.example.com:
+initialization-org0.example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
 	docker-compose -f docker/initialization.yaml up com_example_org0__initialize
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(COM_EXAMPLE_ORG0_VOLUMES)
 
-initialize-org1.example.com:
+initialization-org1.example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
 	docker-compose -f docker/initialization.yaml up com_example_org1__initialize
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(COM_EXAMPLE_ORG1_VOLUMES)
 
-initialize-example.com:
+initialization-org2.example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
-	docker-compose -f docker/initialization.yaml up com_example__initialize
+	docker-compose -f docker/initialization.yaml up com_example_org2__initialize
 	# This command succeeds if and only if the specified volumes exist
-	docker volume inspect $(COM_EXAMPLE_VOLUMES)
+	docker volume inspect $(COM_EXAMPLE_ORG2_VOLUMES)
 
-initialize-www.example.com:
+initialization-www.example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
 	docker-compose -f docker/initialization.yaml up com_example_www__initialize
@@ -58,17 +58,17 @@ initialize-www.example.com:
 # Copies necessary materials from generated_artifacts__volume to the volumes for various peers/orderers/etc.
 # The -j1 is important here, otherwise docker creates multiple networks named fabricwebapp_default
 # due to idiotic design in docker -- https://github.com/moby/moby/issues/18864
-initialize:
-	$(MAKE) -j1 initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com
+initialization:
+	$(MAKE) -j1 initialization-org0.example.com initialization-org1.example.com initialization-org2.example.com initialization-www.example.com
 	docker-compose -f docker/initialization.yaml down
 
 # Brings down the services defined in docker/initialization.yaml
-initialize-down:
+initialization-down:
 	docker-compose -f docker/initialization.yaml down
 
 # Note that this only checks for the presence of certain volumes.  It doesn't verify that the contents are correct.
 inspect-initialized-volumes:
-	docker volume inspect $(COM_EXAMPLE_ORG0_VOLUMES) $(COM_EXAMPLE_ORG1_VOLUMES) $(COM_EXAMPLE_VOLUMES) $(COM_EXAMPLE_WWW_VOLUMES) || echo "must successfully run `make initialize` in order to generate the containers needed for the various services."
+	docker volume inspect $(COM_EXAMPLE_ORG0_VOLUMES) $(COM_EXAMPLE_ORG1_VOLUMES) $(COM_EXAMPLE_ORG2_VOLUMES) $(COM_EXAMPLE_WWW_VOLUMES) || echo "must successfully run `make initialization` in order to generate the containers needed for the various services."
 
 # Bring up all services (and necessary volumes, networks, etc)
 up: inspect-initialized-volumes
@@ -108,6 +108,8 @@ down-chaincode-full: down-chaincode
 # Shows all non-source resources that this project created that currently still exist.
 # The shell "or" with `true` is so we don't receive the error code that find/grep produces when there are no matches.
 show-all-generated-resources:
+	docker network ls | grep $(COMPOSE_PROJECT_NAME)_ || true
+	@echo ""
 	docker ps -a | grep example.com || true
 	@echo ""
 	docker volume ls | grep $(COMPOSE_PROJECT_NAME)_ || true
@@ -131,7 +133,7 @@ rm-state-volumes:
 	docker volume rm \
 	$(COM_EXAMPLE_ORG0_VOLUMES) \
 	$(COM_EXAMPLE_ORG1_VOLUMES) \
-	$(COM_EXAMPLE_VOLUMES) \
+	$(COM_EXAMPLE_ORG2_VOLUMES) \
 	$(COM_EXAMPLE_WWW_VOLUMES) \
 	$(COMPOSE_PROJECT_NAME)_com_example_www__home_volume \
 	|| true
@@ -143,7 +145,7 @@ rm-node-modules:
 
 # Delete generated_artifacts__volume.  This contains all cryptographic material and some channel config material.
 # BE REALLY CAREFUL ABOUT RUNNING THIS ONE, BECAUSE IT CONTAINS YOUR ROOT CA CERTS/KEYS.
-rm-generated-artifacts: initialize-down
+rm-generated-artifacts: initialization-down
 	docker volume rm $(GENERATED_ARTIFACTS_VOLUME) || true
 
 # Delete the containers and images created by the peers that run chaincode.  This will be necessary if the chaincode

@@ -9,8 +9,8 @@ volumes:
   com_example_org1_peer0__volume:
   com_example_org1_peer1__volume:
 
-  #com_example_ca__volume:
-  com_example_orderer__volume:
+  #com_example_org2_ca__volume:
+  com_example_org2_orderer__volume:
 
   com_example_www__config_volume:
   com_example_www__home_volume:
@@ -45,8 +45,8 @@ services:
     ports:
       - 8054:7054
 
-  orderer.example.com:
-    container_name: orderer.example.com
+  orderer.org2.example.com:
+    container_name: orderer.org2.example.com
     image: hyperledger/fabric-orderer:x86_64-1.0.1
     environment:
       - FABRIC_CFG_PATH=/var/hyperledger/orderer
@@ -56,7 +56,7 @@ services:
 
       - ORDERER_GENERAL_GENESISMETHOD=file
       - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
-      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPID=Org2MSP
       - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
 
       - ORDERER_GENERAL_TLS_ENABLED=$TLS_ENABLED
@@ -66,7 +66,7 @@ services:
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
     command: orderer
     volumes:
-      - com_example_orderer__volume:/var/hyperledger/orderer:rw
+      - com_example_org2_orderer__volume:/var/hyperledger/orderer:rw
     ports:
       - 7050:7050
 
@@ -181,7 +181,7 @@ services:
     depends_on:
       - ca.org0.example.com
       - ca.org1.example.com
-      - orderer.example.com
+      - orderer.org2.example.com
       - peer0.org0.example.com
       - peer1.org0.example.com
       - peer0.org1.example.com

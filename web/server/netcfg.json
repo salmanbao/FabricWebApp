@@ -1,26 +1,25 @@
 {
     "organizations": {
-        "orderer": {
-            "name": "orderer",
-            "mspid": "OrdererOrg",
-            "__ca": "the orderer doesn't have its own CA service -- is this a problem?",
+        "org2": {
+            "name": "org2",
+            "mspid": "Org2MSP",
             "ca": null,
             "orderers": {
-                "orderer.example.com": {
+                "orderer.org2.example.com": {
                     "remote": {
                         "base_protocol": "grpc",
-                        "host": "orderer.example.com",
+                        "host": "orderer.org2.example.com",
                         "port": 7050
                     },
-                    "ssl_target_name_override": "orderer.example.com",
-                    "orderer_tls_cacert_path": "/var/hyperledger/www/config/crypto-config/example.com/trusted-roots/ca-cert.pem"
+                    "ssl_target_name_override": "orderer.org2.example.com",
+                    "orderer_tls_cacert_path": "/var/hyperledger/www/config/crypto-config/org2.example.com/trusted-roots/ca-cert.pem"
                 }
             },
             "peers": {
             },
             "users": {
                 "Admin": {
-                    "msp_path": "/var/hyperledger/www/config/crypto-config/example.com/users/Admin@example.com/msp"
+                    "msp_path": "/var/hyperledger/www/config/crypto-config/org2.example.com/users/Admin@org2.example.com/msp"
                 }
             }
         },

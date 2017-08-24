@@ -17,8 +17,8 @@
             },
             "__TODO:": "In theory there could be multiple orderers, but this doesn't appear to be supported in fabric-sdk-node yet, so for now, must have only 1",
             "participating_orderer_organizations": {
-                "orderer": [
-                    "orderer.example.com"
+                "org2": [
+                    "orderer.org2.example.com"
                 ]
             },
             "participating_peer_organizations": {
