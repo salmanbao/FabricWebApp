@@ -16,12 +16,12 @@ all:
 	@echo "See README.md for info on make targets."
 
 generated-artifacts:
-	docker-compose -f docker/initialize.yaml up crypto_config
-	docker-compose -f docker/initialize.yaml up channel_config
+	docker-compose -f docker/generated-artifacts.yaml up crypto_config
+	docker-compose -f docker/generated-artifacts.yaml up channel_config
 	# This removes stopped containers, and importantly, the anonymous volume created by the fact that
-	# the channel_config service uses the image hyperledger/fabric-tools:x86_64-1.0.0, which creates
+	# the channel_config service uses the image hyperledger/fabric-tools:x86_64-1.0.1, which creates
 	# an anonymous volume.
-	docker-compose -f docker/initialize.yaml rm -v --force
+	docker-compose -f docker/generated-artifacts.yaml rm -v --force
 	# This command succeeds if and only if the specified volumes exist -- TODO: This doesn't actually check
 	# what we want, because docker-compose creates all these volumes upon startup, regardless of what happens later.
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
@@ -30,28 +30,28 @@ generated-artifacts:
 initialize-org0.example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
-	docker-compose -f docker/initialize.yaml up com_example_org0__initialize
+	docker-compose -f docker/initialization.yaml up com_example_org0__initialize
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(COM_EXAMPLE_ORG0_VOLUMES)
 
 initialize-org1.example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
-	docker-compose -f docker/initialize.yaml up com_example_org1__initialize
+	docker-compose -f docker/initialization.yaml up com_example_org1__initialize
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(COM_EXAMPLE_ORG1_VOLUMES)
 
 initialize-example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
-	docker-compose -f docker/initialize.yaml up com_example__initialize
+	docker-compose -f docker/initialization.yaml up com_example__initialize
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(COM_EXAMPLE_VOLUMES)
 
 initialize-www.example.com:
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
-	docker-compose -f docker/initialize.yaml up com_example_www__initialize
+	docker-compose -f docker/initialization.yaml up com_example_www__initialize
 	# This command succeeds if and only if the specified volumes exist
 	docker volume inspect $(COM_EXAMPLE_WWW_VOLUMES)
 
@@ -60,11 +60,11 @@ initialize-www.example.com:
 # due to idiotic design in docker -- https://github.com/moby/moby/issues/18864
 initialize:
 	$(MAKE) -j1 initialize-org0.example.com initialize-org1.example.com initialize-example.com initialize-www.example.com
-	docker-compose -f docker/initialize.yaml down
+	docker-compose -f docker/initialization.yaml down
 
-# Brings down the services defined in docker/initialize.yaml
+# Brings down the services defined in docker/initialization.yaml
 initialize-down:
-	docker-compose -f docker/initialize.yaml down
+	docker-compose -f docker/initialization.yaml down
 
 # Note that this only checks for the presence of certain volumes.  It doesn't verify that the contents are correct.
 inspect-initialized-volumes:
