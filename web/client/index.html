@@ -12,11 +12,9 @@
         <div class='vertical-layout' style='width:50vw'>
             <div class='horizontal-layout'>
                 <input type='text' ng-model='input_account_name' style='flex-grow:0' placeholder='Account Name'>
-                <button ng-click='login(input_account_name)' style='flex-grow:1'>Login</button>
+                <button ng-click='switch_to_account(input_account_name)' style='flex-grow:1'>Switch To Account</button>
             </div>
-            <div class='horizontal-layout'>
-                <span style='flex-grow:0'>Acting as user:</span> <select id='account_name_select' ng-model='selected_account_name' ng-change='switch_account_panel_to("Admin", true)' style='flex-grow:1'></select>
-            </div>
+            <br>
             <div class='vertical-layout'>
                 <account-panel id='account_panel' context='null'></account-panel>
             </div>

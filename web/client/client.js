@@ -76,7 +76,6 @@ angular
         });
     };
 
-    $scope.selected_account_name    = null;
     $scope.account_context_d        = {};
 
     $scope.make_account_context     = function (account_name) {
@@ -93,43 +92,49 @@ angular
             query_balance__account_name     : null
         };
     };
-    $scope.login = function (account_name) {
-        $scope.append_to_log('attempting to login with account_name = "' + account_name + '"');
-        if (account_name in Object.keys($scope.account_context_d)) {
-            $scope.append_to_log('error: account "' + account_name + '" already exists');
-        } else {
-            $scope.make_account_context(account_name);
-            const account_context   = $scope.account_context_d[account_name];
+    $scope.bootstrap_account = function (account_name) {
+        $scope.append_to_log('bootstrap_account("'+account_name+'");');
 
-            const select            = document.getElementById('account_name_select');
-            const option            = document.createElement('option');
-            option.text             = account_name;
-            select.add(option);
+        console.assert(!(account_name in Object.keys($scope.account_context_d)), 'Account "'+account_name+'" already exists');
+        $scope.make_account_context(account_name);
 
-            $scope.switch_account_panel_to(account_name, true);
+        const account_context   = $scope.account_context_d[account_name];
+        account_context.balance = 'N/A';
 
-            if (account_name == 'Admin') {
-                account_context.balance = 'N/A';
-            } else {
-                $scope.query_balance(account_name)
-                .then(response => {
-                    $scope.append_to_log('response = "' + response + '"');
-                    account_context.balance = response.response.data;
-                });
-            }
-        }
-    };
-    $scope.switch_account_panel_to = function (account_name, update_selected_account_name) {
-        $scope.append_to_log('switch_account_panel_to("'+account_name+'"); selected_account_name = "'+$scope.selected_account_name+'"');
         const account_panel = angular.element(document.getElementById('account_panel'));
         account_panel.attr('context', 'account_context_d["'+account_name+'"]');
         // This nonsense updates the angularjs state based on the changes to the 'context' attribute.
         account_panel.injector().invoke(function($compile){
-            $compile(account_panel)(account_panel.scope())
+            $compile(account_panel)(account_panel.scope());
         });
-        if (update_selected_account_name) {
-            $scope.selected_account_name = account_name;
+    };
+    $scope.switch_to_account = function (account_name) {
+        $scope.append_to_log('switch_account_panel_to("'+account_name+'");');
+
+        if (!(account_name in Object.keys($scope.account_context_d))) {
+            $scope.make_account_context(account_name);
         }
+
+        const account_context   = $scope.account_context_d[account_name];
+//         // Clear old state until the new state is retrieved.
+//         account_context.balance = '';
+
+        $scope.query_balance(account_name)
+        .then(response => {
+            $scope.append_to_log('response = "' + response + '"');
+
+            account_context.balance = response.response.data;
+
+            const account_panel = angular.element(document.getElementById('account_panel'));
+            account_panel.attr('context', 'account_context_d["'+account_name+'"]');
+            // This nonsense updates the angularjs state based on the changes to the 'context' attribute.
+            account_panel.injector().invoke(function($compile){
+                $compile(account_panel)(account_panel.scope());
+            });
+        })
+        .catch(err => {
+            $scope.append_to_log('error: no account named "' + account_name + '" found.');
+        });
     };
 
     $scope.create_account = function (account_name, initial_balance) {
@@ -174,7 +179,7 @@ angular
 //             $scope.append_to_log(err.stack);
 //         });
 
-        $scope.login('Admin');
+        $scope.bootstrap_account('Admin');
     });
 }])
 .directive('accountPanel', () => {
