@@ -26,6 +26,9 @@ generated-artifacts:
 	# what we want, because docker-compose creates all these volumes upon startup, regardless of what happens later.
 	docker volume inspect $(GENERATED_ARTIFACTS_VOLUME)
 
+down-generated-artifacts:
+	docker-compose -f docker/generated-artifacts.yaml down
+
 # TODO: Put failsafes in to prevent calling this twice?
 initialization-org0.example.com:
 	# This command succeeds if and only if the specified volumes exist
@@ -63,7 +66,7 @@ initialization:
 	docker-compose -f docker/initialization.yaml down
 
 # Brings down the services defined in docker/initialization.yaml
-initialization-down:
+down-initialization:
 	docker-compose -f docker/initialization.yaml down
 
 # Note that this only checks for the presence of certain volumes.  It doesn't verify that the contents are correct.
@@ -145,7 +148,7 @@ rm-node-modules:
 
 # Delete generated_artifacts__volume.  This contains all cryptographic material and some channel config material.
 # BE REALLY CAREFUL ABOUT RUNNING THIS ONE, BECAUSE IT CONTAINS YOUR ROOT CA CERTS/KEYS.
-rm-generated-artifacts: initialization-down
+rm-generated-artifacts: down-initialization
 	docker volume rm $(GENERATED_ARTIFACTS_VOLUME) || true
 
 # Delete the containers and images created by the peers that run chaincode.  This will be necessary if the chaincode
@@ -165,7 +168,7 @@ rm-chaincode-docker-resources:
 # generated_artifacts__volume which, unless you backed them up somewhere, if you have configured
 # generation of intermediate CAs, then it contains the only copies of your root CAs' keys.
 rm-all-generated-resources:
-	$(MAKE) down
+	$(MAKE) down down-generated-artifacts down-initialization
 	$(MAKE) rm-state-volumes rm-node-modules rm-generated-artifacts rm-chaincode-docker-resources
 	$(MAKE) rm-build-chaincode-state rm-chaincode-docker-resources
 

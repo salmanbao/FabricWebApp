@@ -1,35 +1,109 @@
 # Hyperledger Fabric App using node.js SDK
 
-This was originally a fork of https://github.com/ratnakar-asara/Fabric_SampleWebApp but has diverged quite
-a bit since then.
+By Victor Dods on behalf of LedgerDomain.
 
-## Instructions
+## Prerequisites
+
+It is apparently necessary to have Docker v1.13 (or presumably anything higher).  I was getting inexplicable (and
+worse, nondeterministic) DNS resolution failures between services during GRPC calls with Docker v1.12.
+
+This application uses Hyperledger Fabric v1.0.1.  The necessary components are:
+-   hyperledger/fabric-peer:x86_64-1.0.1 docker image
+-   hyperledger/fabric-orderer:x86_64-1.0.1 docker image
+-   hyperledger/fabric-ca:x86_64-1.0.1 docker image
+-   hyperledger/fabric-tools:x86_64-1.0.1 docker image
+-   hyperledger/fabric-baseimage:x86_64-0.3.0 docker image
+
+These will be retrieved automatically when bringing the various docker services up, but they can be pulled manually
+ahead of time to avoid overhead in starting the application.
+
+## Instructions To Run Application
 
 Clone this repo with the following command.
 
     git clone https://github.com/vdods/FabricWebApp.git
 
-In one terminal, generate all configuration and cryptographic artifacts, spin up the peer network, orderer,
-certificate authorities, and web server (which hosts the web app) with the following command.  See `Makefile`
-for details.
+As a one-time step, generate all necessary configuration and cryptographic material using the following command.
+
+    make generated-artifacts
+
+Among other things, this creates a docker volume `fabricwebapp_generated_artifacts__volume` containing all certs
+and keys necessary for dispersal to the various components of this blockchain application.  In particular, this
+creates a root CA (which for security purposes should remain offline because it has the root cert and key from
+which all trust derives) for each organization which signs certs for the intermediate CAs (which will be online)
+which create the certs/keys for the various peers, orderers, and users.
+
+Then, as a one-time step, initialize the persistent volumes for each component of this application using the
+following command.
+
+    make initialization
+
+This copies the necessary config/crypto materials to the volume for each component of the application (e.g.
+CAs, orderer(s), peers, web server(s)).
+
+Finally, as a repeatable step, bring up the application services using the following command.
 
     make up
 
 The web app (in `web/server/SimpleApp.js`) will automatically read the application and network configuration files
 (`web/server/appcfg.json` and `web/server/netcfg.json` respectively), create necessary keystores, enroll all users
 defined in `netcfg.json`, create all channels defined in `appcfg.json`, send participating organizations invitation
-to join the respective channels, install/instantiate chaincode on the peers of each channel, and then make a few
-queries and transactions on `mychannel`.  The web app should exit with code 0, indicating success, at which point,
-the docker-compose services should shut down on their own (see `docker-compose up --abort-on-container-exit` for details).
-If an error occurs, it will be indicated, and the docker-compose services will be shut down.
+to join the respective channels, and install/instantiate chaincode on the peers of each channel.
+
+Docker-compose is set to abort upon container exit, so if there's a problem, it will exit with a nonzero return
+code, and the logs for the relevant services can be viewed.
 
 ## Structure Of Project
 
-TODO document
--   Project structure
--   What are source files
--   What are generated
--   docker-compose volumes
+This application demonstrates three organizations (e.g. companies) participating together to provide a bank-type
+application via simple web client where bank accounts can be created, balances queried, and transfers made between
+accounts.  It's based on the `balance-transfer` example from [http://github.com/hyperledger/fabric-samples].
+
+The components of this application (hostname and description) are:
+-   Org0 components:
+    -   <N/A> : Org0's (root) CA (certificate authority) which, to keep the root cert/key safe, is not run online
+    -   ca.org0.example.com : Org0's (intermediate) CA which is run online
+    -   peer0.org0.example.com : Org0's peer0 node
+    -   peer1.org0.example.com : Org0's peer1 node
+-   Org1 components:
+    -   <N/A> : Org1's (root) CA which, to keep the root cert/key safe, is not run online
+    -   ca.org1.example.com : Org1's (intermediate) CA which is run online
+    -   peer0.org1.example.com : Org0's peer0 node
+    -   peer0.org1.example.com : Org0's peer1 node
+-   Org2 components:
+    -   <N/A> : Org2's (root) CA which, to keep the root cert/key safe, is not run online
+    -   <N/A> : Org2's (intermediate) CA which is not run online because it's not used in this app after initialization
+    -   orderer.org2.example.com : Org2's orderer node
+-   Other components:
+    -   www.example.com : The web server (not formally associated with an organization like the others components are)
+
+The `docker-compose.yaml` file and the supporting `docker/ca-base.yaml` and `docker/peer-base.yaml` files are what
+define the services that run.
+
+The source files are structured under the following directory structure:
+-   `chaincode` : This is what is run on the peers to execute transactions
+-   `docker` : Files defining docker-compose services
+-   `source-artifacts` : Configuration files and script(s) used to create the generated artifacts described above
+-   `web/server` : Node.js-based web server which drives the blockchain application and offers a simple REST API to the web client
+-   `web/client` : Minimal web client to drive the blockchain app from the user side
+
+Docker volumes:
+-   `fabricwebapp_generated_artifacts__volume` : Generated by `make generated-artifacts`, and contains all CAs
+    and CA-generated materials -- the `crypto-config` dir created by `fabric-ca-cryptogen.sh`, the `mychannel.tx`
+    channel configuration used to create the channel for use by the blockchain app, and the `orderer.genesis.block`
+    file used to initialize the blockchain with the participating organizations' credentials.
+-   `fabricwebapp_com_example_org0_ca__volume` : Org0's CA and state (user registration and enrollment)
+-   `fabricwebapp_com_example_org0_peer0__volume` : Org0's peer0 configuration and state
+-   `fabricwebapp_com_example_org0_peer1__volume` : Org0's peer1 configuration and state
+-   `fabricwebapp_com_example_org1_ca__volume` : Org1's CA and state (user registration and enrollment)
+-   `fabricwebapp_com_example_org1_peer0__volume` : Org1's peer0 configuration and state
+-   `fabricwebapp_com_example_org1_peer1__volume` : Org1's peer1 configuration and state
+-   `fabricwebapp_com_example_org2_ca__volume` : Org2's CA and state (user registration and enrollment), though this is
+    not used by a running service
+-   `fabricwebapp_com_example_org2_orderer__volume` : Org2's orderer configuration and state
+-   `fabricwebapp_com_example_www__config_volume` : Crypto/config materials used by the www.example.com web server
+-   `fabricwebapp_com_example_www__home_volume` : Keystore(s) and other persistent state used by the www.example.com web server
+-   `fabricwebapp_com_example_www__node_modules_volume` : The `node_modules` directory used by the www.example.com web server
 
 ## Finer-grained Instructions
 
@@ -40,29 +114,25 @@ easier.
 
 -   The command
 
-        make all-generated-artifacts
+        make generated-artifacts
 
-    will ensure that the following artifacts are generated:
-    -   Cryptographic materials in `generated-artifacts/crypto-config`
-    -   Configuration transaction in `generated-artifacts/mychannel.tx`
-    -   Orderer genesis block in `generated-artifacts/orderer.genesis.block`
+    Creates the `fabricwebapp_generated_artifacts__volume` docker volume and generates all configuration and cryptographic
+    materials necessary to later disperse (via `make initialization`) to the various components of the blockchain app.
 
-    The `generated-artifacts` directory contains all generated artifacts and only generated artifacts (no source artifacts),
-    and therefore can be entirely deleted without worry.
+-   The command
+
+        make initialization
+
+    Creates the `fabricwebapp_com_example_*__volume` docker volumes and copies the necessary files from
+    `fabricwebapp_generated_artifacts__volume` to the respective volumes.  This represents the communication of
+    configuration/cryptographic material via out-of-bands channels to the participating servers.
 
 -   The command
 
         make up
 
-    ensures that all necessary artifacts are generated (into the `generated-artifacts` subdir), and creates and starts all
-    services, volumes, and networks and prints all services' logs to the console.  Hitting Ctrl+C in this mode
-    will stop all services.  If any container exits, all will exit.  There are three volumes:
-    -   `fabricwebapp_webserver_homedir` : Stores the home directory of the user that runs the web server.  In particular, this
-        stores the `~/.hfc-key-store` directory.
-    -   `fabricwebapp_webserver_homedir_node_modules` : Stores the `node_modules` directory for the web server.  This will really
-        only be populated once and won't need updating often, nor does it typically need to be deleted before restarting the
-        web server.
-    -   `fabricwebapp_webserver_tmp` : Stores the key/value store for each organization in the network.
+    Creates and starts all services, volumes, and networks and prints all services' logs to the console.  Hitting
+    Ctrl+C in this mode will stop all services.  If any container exits, all will exit.
 
 -   The command
 
@@ -87,20 +157,22 @@ easier.
 
 -   The command
 
-        make down-full
+        make down && make rm-state-volumes && make initialization && make up
 
-    brings down all services and delete all volumes.  This clears all state (of peers, orderer, CAs, web server, etc).
+    is a convenient single command you can use after stopping services to reset all services back to a clean state
+    and restart them, following the services' logs.  There is typically no need to delete the persistent
+    `fabricwebapp_com_example_www__node_modules_volume` volume because it is not likely to qualitatively change or
+    be corrupted (though that does happen sometimes during development for various reasons).  Note that the web
+    server service in `docker-compose.yaml` does execute the command `npm install`, so any updates to
+    `web/server/package.json` should automatically take effect.
 
 -   The command
 
-        make down && make rm-state-volumes && make up
+        make build-chaincode
 
-    is a convenient single command you can use after stopping services to reset all services back to a clean state
-    and restart them, following the services' logs.  There is typically no need to delete the persistent `node_modules`
-    directory (contained within the fabricwebapp_webserver_homedir_node_modules docker volume and deleted by the
-    `make rm-node-modules` command) because it is not likely to qualitatively change or be corrupted (though that does
-    happen sometimes during development for various reasons).  Note that the web server service in `docker-compose.yaml`
-    does execute the command `npm install`, so any updates to `web/server/package.json` should automatically take effect.
+    builds the chaincode in a separate service, and succeeds or fails quite quickly.  This is used to avoid
+    the slow startup of the peers and other services needed to have the chaincode compile in the "real" way
+    as in a production environment, and instead be able to iterate quickly when working on the chaincode.
 
 ### Viewing Stuff
 
@@ -112,6 +184,13 @@ easier.
     the `make rm-all-generated-resources` command.
 
 ### Deleting Stuff
+
+-   The command
+
+        make rm-build-chaincode-state
+
+    deletes the build artifacts generated by `make build-chaincode`, and can be used to force a "clean build"
+    of the chaincode.
 
 -   The command
 
@@ -139,12 +218,6 @@ easier.
 
 -   The command
 
-        make rm-webserver-env
-
-    will delete the docker image used by the web server.  This does not delete any real data that can't be easily recreated.
-
--   The command
-
         make rm-chaincode-docker-resources
 
     Deletes the docker containers created by the peers to run chaincode in net mode (which is default, as opposed to dev
@@ -167,38 +240,23 @@ easier.
 
 ## Random Notes
 
--   There is a bit of a hack in `docker-compose.yaml` in order to retrieve the private key filename in various situations.
-    This is done by specifying
-
-        --ca.keyfile `ls -1 /etc/hyperledger/fabric-ca-server-config/*_sk`
-
-    in the command to start each CA service.  If there is more than one file in that directory matching the `*_sk` pattern,
-    then this will cause the CA (in this case, `ca.org1.example.com`) to stop with error
-
-        ca.org1.example.com       | 2017/06/01 19:31:53 [INFO] Created default configuration file at /etc/hyperledger/fabric-ca-server/fabric-ca-server-config.yaml
-        ca.org1.example.com       | Error: Usage: too many arguments.
-        ca.org1.example.com       | Usage:
-        ca.org1.example.com       |   fabric-ca-server start [flags]
-
-    This can occur if for some reason the cryptographic materials are generated (via rules in Makefile) more than once.
-    The solution is to delete the cryptographic materials so they can be regenerated from scratch.  This can be done
-    conveniently via the command
-
-        make rm-generated-artifacts
-
-    No explicit command is necessary to regenerate them for running the docker-compose services, as the `make up` command
-    will generate them automatically.  However, they can be generated via the command
-
-        make all-generated-artifacts
 -   The `.env` file contains the default environment variable values to be used in `docker-compose.yaml`.
+    In particular:
+    -   GENERAL_LOGGING_LEVEL controls how verbose the logging for each service is.
+    -   TLS_ENABLED controls if TLS communication between each service is enabled.
 
 ## To-Dos
 
--   Add docker volumes for peers (and orderer?) to persist the blockchain.
--   Change 'init' call to not accept any parameters and initialize an empty 'bank'.  Add a 'create account'
-    transaction, and add some calls to it and the existing 'delete account' transaction.  Verify that
-    the state is preserved correctly between calls, and that the web server correctly handles existing
+-   Use the fabric-ca-server-config.yaml files for ca.orgN.example.com in fabric-ca-cryptogen.sh so that the CAs can
+    be custom configured.
+-   Verify that the state is preserved correctly between calls, and that the web server correctly handles existing
     persistent data in its keystore (regarding enrollment).
--   Make a separate directory of artifacts for use by the web server.  There should be a very clear
-    demarcation between the artifacts directories for each logical server (e.g. peer, orderer, ca, webserver).
--   Get peer and orderer TLS working.  Currently it fails within the grpc node module in the Orderer.sendBroadcast call.
+-   Create a single Makefile rule that ensures the correct artifacts/volumes/etc exist (creating if necessary),
+    and then brings up all necessary services.  This rule should be able to be used to run the set of services again
+    even if they exist already.  It should be the single, turn-key command that drives this entire example app.
+-   Separate the `make generated-artifacts` step up into one command to generate the artifacts for each organization.
+    This will require modifying `fabric-ca-cryptogen.sh` accordingly.
+
+## Origin
+
+This was originally a fork of https://github.com/ratnakar-asara/Fabric_SampleWebApp but has diverged quite a bit since then.
