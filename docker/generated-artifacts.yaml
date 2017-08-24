@@ -21,9 +21,8 @@ services:
         command: |
             bash -cx "
                 cd /generated-artifacts
-                /source-artifacts/fabric-ca-cryptogen.alternate.sh
+                /source-artifacts/fabric-ca-cryptogen.sh
             "
-                #/source-artifacts/fabric-ca-cryptogen.sh
 
     # TODO: Figure out how to combine fabric-ca and fabric-tools docker images so only one service is needed (this service
     # could then be subsumed by crypto_config into a generate_artifacts service)
