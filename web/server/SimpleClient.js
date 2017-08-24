@@ -353,7 +353,7 @@ class SimpleClient {
 //                         logger.info('config:', config);
 //                     }
                     logger.info('process.env.GRPC_SSL_CIPHER_SUITES = %j', process.env.GRPC_SSL_CIPHER_SUITES);
-                    logger.info('creating channel "%s" using organization "%s"\'s client', channel_name, channel_creator_org_name);
+                    logger.info('creating channel "%s" using organization "%s"\'s client; channel_orderer = %j', channel_name, channel_creator_org_name, channel_orderer);
                     return channel_creator_client.createChannel({
                         name: channel_name,
                         orderer: channel_orderer,
