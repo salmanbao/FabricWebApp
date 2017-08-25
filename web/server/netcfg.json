@@ -1,34 +1,25 @@
 {
-    "__orderer": {
-        "__url": "grpcs://orderer.example.com:7050",
-        "url": "grpc://orderer.example.com:7050",
-        "ssl_target_name_override": "orderer.example.com",
-        "orderer_tls_cacerts_path": "../../generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt"
-    },
     "organizations": {
-        "orderer": {
-            "name": "orderer",
-            "mspid": "OrdererOrg",
-            "__ca": "the orderer doesn't have its own CA service -- is this a problem?",
+        "org2": {
+            "name": "org2",
+            "mspid": "Org2MSP",
             "ca": null,
             "orderers": {
-                "orderer.example.com": {
+                "orderer.org2.example.com": {
                     "remote": {
-                        "protocol": "grpc",
-                        "__protocol": "grpcs",
-                        "host": "orderer.example.com",
+                        "base_protocol": "grpc",
+                        "host": "orderer.org2.example.com",
                         "port": 7050
                     },
-                    "ssl_target_name_override": "orderer.example.com",
-                    "orderer_tls_cacerts_path": "../../generated-artifacts/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt"
+                    "ssl_target_name_override": "orderer.org2.example.com",
+                    "orderer_tls_cacert_path": "/var/hyperledger/www/config/crypto-config/org2.example.com/trusted-roots/ca-cert.pem"
                 }
             },
             "peers": {
             },
             "users": {
                 "Admin": {
-                    "msp_path": "../../generated-artifacts/crypto-config/ordererOrganizations/example.com/users/Admin@example.com/msp",
-                    "tls_path": "../../generated-artifacts/crypto-config/ordererOrganizations/example.com/users/Admin@example.com/tls"
+                    "msp_path": "/var/hyperledger/www/config/crypto-config/org2.example.com/users/Admin@org2.example.com/msp"
                 }
             }
         },
@@ -37,12 +28,12 @@
             "mspid": "Org0MSP",
             "ca": {
                 "remote": {
-                    "protocol": "http",
+                    "base_protocol": "http",
                     "host": "ca.org0.example.com",
                     "port": 7054
                 },
                 "tlsOptions": {
-                    "trustedRoots": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/ca/ca.org0.example.com-cert.pem",
+                    "trustedRoots": ["/var/hyperledger/www/config/crypto-config/org0.example.com/trusted-roots/ca-cert.pem"],
                     "verify": true
                 },
                 "caname": null
@@ -52,45 +43,39 @@
             "peers": {
                 "peer0.org0.example.com": {
                     "requests_remote": {
-                        "protocol": "grpc",
-                        "__protocol": "grpcs",
+                        "base_protocol": "grpc",
                         "host": "peer0.org0.example.com",
                         "port": 7051
                     },
                     "events_remote": {
-                        "protocol": "grpc",
-                        "__protocol": "grpcs",
+                        "base_protocol": "grpc",
                         "host": "peer0.org0.example.com",
                         "port": 7053
                     },
                     "ssl_target_name_override": "peer0.org0.example.com",
-                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer0.org0.example.com/tls/ca.crt"
+                    "peer_tls_cacert_path": "/var/hyperledger/www/config/crypto-config/org0.example.com/trusted-roots/ca-cert.pem"
                 },
                 "peer1.org0.example.com": {
                     "requests_remote": {
-                        "protocol": "grpc",
-                        "__protocol": "grpcs",
+                        "base_protocol": "grpc",
                         "host": "peer1.org0.example.com",
                         "port": 7051
                     },
                     "events_remote": {
-                        "protocol": "grpc",
-                        "__protocol": "grpcs",
+                        "base_protocol": "grpc",
                         "host": "peer1.org0.example.com",
                         "port": 7053
                     },
                     "ssl_target_name_override": "peer1.org0.example.com",
-                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/peers/peer1.org0.example.com/tls/ca.crt"
+                    "peer_tls_cacert_path": "/var/hyperledger/www/config/crypto-config/org0.example.com/trusted-roots/ca-cert.pem"
                 }
             },
             "users": {
                 "Admin": {
-                    "msp_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/Admin@org0.example.com/msp",
-                    "tls_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/Admin@org0.example.com/tls"
+                    "msp_path": "/var/hyperledger/www/config/crypto-config/org0.example.com/users/Admin@org0.example.com/msp"
                 },
                 "User1": {
-                    "msp_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/User1@org0.example.com/msp",
-                    "tls_path": "../../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/users/User1@org0.example.com/tls"
+                    "msp_path": "/var/hyperledger/www/config/crypto-config/org0.example.com/users/User1@org0.example.com/msp"
                 }
             }
         },
@@ -99,12 +84,12 @@
             "mspid": "Org1MSP",
             "ca": {
                 "remote": {
-                    "protocol": "http",
+                    "base_protocol": "http",
                     "host": "ca.org1.example.com",
                     "port": 7054
                 },
                 "tlsOptions": {
-                    "trustedRoots": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem",
+                    "trustedRoots": ["/var/hyperledger/www/config/crypto-config/org1.example.com/trusted-roots/ca-cert.pem"],
                     "verify": true
                 },
                 "caname": null
@@ -114,45 +99,39 @@
             "peers": {
                 "peer0.org1.example.com": {
                     "requests_remote": {
-                        "protocol": "grpc",
-                        "__protocol": "grpcs",
+                        "base_protocol": "grpc",
                         "host": "peer0.org1.example.com",
                         "port": 7051
                     },
                     "events_remote": {
-                        "protocol": "grpc",
-                        "__protocol": "grpcs",
+                        "base_protocol": "grpc",
                         "host": "peer0.org1.example.com",
                         "port": 7053
                     },
                     "ssl_target_name_override": "peer0.org1.example.com",
-                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+                    "peer_tls_cacert_path": "/var/hyperledger/www/config/crypto-config/org1.example.com/trusted-roots/ca-cert.pem"
                 },
                 "peer1.org1.example.com": {
                     "requests_remote": {
-                        "protocol": "grpc",
-                        "__protocol": "grpcs",
+                        "base_protocol": "grpc",
                         "host": "peer1.org1.example.com",
                         "port": 7051
                     },
                     "events_remote": {
-                        "protocol": "grpc",
-                        "__protocol": "grpcs",
+                        "base_protocol": "grpc",
                         "host": "peer1.org1.example.com",
                         "port": 7053
                     },
                     "ssl_target_name_override": "peer1.org1.example.com",
-                    "peer_tls_cacerts_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/peers/peer1.org1.example.com/tls/ca.crt"
+                    "peer_tls_cacert_path": "/var/hyperledger/www/config/crypto-config/org1.example.com/trusted-roots/ca-cert.pem"
                 }
             },
             "users": {
                 "Admin": {
-                    "msp_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp",
-                    "tls_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls"
+                    "msp_path": "/var/hyperledger/www/config/crypto-config/org1.example.com/users/Admin@org1.example.com/msp"
                 },
                 "User1": {
-                    "msp_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp",
-                    "tls_path": "../../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com/tls"
+                    "msp_path": "/var/hyperledger/www/config/crypto-config/org1.example.com/users/User1@org1.example.com/msp"
                 }
             }
         }

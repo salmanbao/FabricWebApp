@@ -1,13 +1,11 @@
 {
-    "host":"webserver",
-    "port":"4000",
     "GOPATH":"../../chaincode/gopath",
-    "kvs_path_prefix":"/tmp/FabricWebApp/kvs/organization/",
-    "cryptoSuite_path_prefix":"/tmp/FabricWebApp/cryptoSuite/",
+    "kvs_path_prefix":"/var/hyperledger/www/tmp/FabricWebApp/kvs/organization/",
+    "cryptoSuite_path_prefix":"/var/hyperledger/www/tmp/FabricWebApp/cryptoSuite/",
     "eventWaitTime":"30000",
     "channels": {
         "mychannel": {
-            "configtx_path": "../../generated-artifacts/mychannel.tx",
+            "configtx_path": "/var/hyperledger/www/config/mychannel.tx",
             "chaincode": {
                 "id": "mycc",
                 "version": "v0",
@@ -19,8 +17,8 @@
             },
             "__TODO:": "In theory there could be multiple orderers, but this doesn't appear to be supported in fabric-sdk-node yet, so for now, must have only 1",
             "participating_orderer_organizations": {
-                "orderer": [
-                    "orderer.example.com"
+                "org2": [
+                    "orderer.org2.example.com"
                 ]
             },
             "participating_peer_organizations": {

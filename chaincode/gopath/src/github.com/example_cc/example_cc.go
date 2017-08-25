@@ -65,43 +65,14 @@ type SimpleChaincode struct {
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response  {
     fmt.Println("########### example_cc Init ###########")
     _, args := stub.GetFunctionAndParameters()
-    var A, B string    // Entities
-    var Aval, Bval int // Asset holdings
-    var err error
 
     fmt.Printf("within Init : GetCreatorCommonName(stub): %v\n", GetCreatorCommonName(stub))
 
-    if len(args) != 4 {
-        return shim.Error("Incorrect number of arguments. Expecting 4")
-    }
-
-    // Initialize the chaincode
-    A = args[0]
-    Aval, err = strconv.Atoi(args[1])
-    if err != nil {
-        return shim.Error("Expecting integer value for asset holding")
-    }
-    B = args[2]
-    Bval, err = strconv.Atoi(args[3])
-    if err != nil {
-        return shim.Error("Expecting integer value for asset holding")
-    }
-    fmt.Printf("Aval = %d, Bval = %d\n", Aval, Bval)
-
-    // Write the state to the ledger
-    err = stub.PutState(A, []byte(strconv.Itoa(Aval)))
-    if err != nil {
-        return shim.Error(err.Error())
-    }
-
-    err = stub.PutState(B, []byte(strconv.Itoa(Bval)))
-    if err != nil {
-        return shim.Error(err.Error())
+    if len(args) != 0 {
+        return shim.Error("Incorrect number of arguments. Expecting 0")
     }
 
     return shim.Success(nil)
-
-
 }
 
 // Transaction makes payment of X units from A to B
@@ -111,27 +82,61 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
     fmt.Printf("within Invoke : GetCreatorCommonName(stub): %v\n", GetCreatorCommonName(stub))
 
-    if len(args) < 1 {
-        return shim.Error("Incorrect number of arguments. Expecting at least 1")
+    if function == "create_account" {
+        // Creates an account with the given name and initial balance
+        return t.create_account(stub, args)
     }
 
-    if function == "delete" {
+    if function == "delete_account" {
         // Deletes an entity from its state
-        return t.delete(stub, args)
+        return t.delete_account(stub, args)
     }
 
-    if function == "query" {
+    if function == "query_balance" {
         // queries an entity state
-        return t.query(stub, args)
+        return t.query_balance(stub, args)
     }
-    if function == "move" {
+    if function == "transfer" {
         // Deletes an entity from its state
-        return t.move(stub, args)
+        return t.transfer(stub, args)
     }
-    return shim.Error("Unknown action, check the first argument, must be one of 'delete', 'query', or 'move'")
+    return shim.Error(fmt.Sprintf("Unknown action '%s', check the first argument, must be one of 'create_account', 'delete', 'query_balance', or 'transfer'", function))
 }
 
-func (t *SimpleChaincode) move(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SimpleChaincode) create_account (stub shim.ChaincodeStubInterface, args []string) pb.Response {
+    if len(args) != 2 {
+        return shim.Error("Incorrect number of arguments.  Expecting 2; account_holder_name and initial_balance")
+    }
+
+    // Parse and validate the args.
+    account_holder_name := args[0]
+    initial_balance, err := strconv.Atoi(args[1])
+    if err != nil {
+        return shim.Error(fmt.Sprintf("Malformed initial_balance string \"%s\"; expecting nonnegative integer", args[1]))
+    }
+    if initial_balance < 0 {
+        return shim.Error(fmt.Sprintf("Invalid initial_balance %v; expecting nonnegative integer", initial_balance))
+    }
+
+    // Check for an existing account
+    existing_account_state,err := stub.GetState(account_holder_name)
+    if err != nil {
+        return shim.Error(err.Error()) // TODO: Better error message
+    }
+    if existing_account_state != nil {
+        return shim.Error(fmt.Sprintf("Could not create account named \"%s\"; account already exists", account_holder_name))
+    }
+
+    // Write the account balance to the ledger.
+    err = stub.PutState(account_holder_name, []byte(strconv.Itoa(initial_balance)))
+    if err != nil {
+        return shim.Error(err.Error()) // TODO: Better error message
+    }
+
+    return shim.Success(nil)
+}
+
+func (t *SimpleChaincode) transfer (stub shim.ChaincodeStubInterface, args []string) pb.Response {
     // must be an invoke
     var A, B string    // Entities
     var Aval, Bval int // Asset holdings
@@ -188,8 +193,8 @@ func (t *SimpleChaincode) move(stub shim.ChaincodeStubInterface, args []string) 
     return shim.Success(nil);
 }
 
-// Deletes an entity from state
-func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+// Deletes the account of the named user.
+func (t *SimpleChaincode) delete_account (stub shim.ChaincodeStubInterface, args []string) pb.Response {
     if len(args) != 1 {
         return shim.Error("Incorrect number of arguments. Expecting 1")
     }
@@ -205,8 +210,8 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
     return shim.Success(nil)
 }
 
-// Query callback representing the query of a chaincode
-func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+// Query the balance of an account with specified username.
+func (t *SimpleChaincode) query_balance (stub shim.ChaincodeStubInterface, args []string) pb.Response {
 
     var A string // Entities
     var err error
@@ -223,9 +228,8 @@ func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string)
         jsonResp := "{\"Error\":\"Failed to get state for " + A + "\"}"
         return shim.Error(jsonResp)
     }
-
     if Avalbytes == nil {
-        jsonResp := "{\"Error\":\"Nil amount for " + A + "\"}"
+        jsonResp := "{\"Error\":\"Account named \"" + A + "\" does not exist\"}"
         return shim.Error(jsonResp)
     }
 

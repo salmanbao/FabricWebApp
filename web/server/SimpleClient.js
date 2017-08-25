@@ -1,8 +1,7 @@
 'use strict';
 
-const EventHub = require('fabric-client/lib/EventHub.js'); // TEMP -- shouldn't have to require source internal to a module
-const FabricCAServices = require('fabric-ca-client');
 const FabricClient = require('fabric-client');
+const FabricCAServices = require('fabric-ca-client');
 const FabricClientUtils = require('fabric-client/lib/utils.js');
 const fs = require('fs');
 const path = require('path');
@@ -19,8 +18,10 @@ function assert (condition, message) {
     }
 }
 
-function assemble_url_from_remote (remote) {
-    return remote.protocol + '://' + remote.host + ':' + remote.port;
+function assemble_url_from_remote (remote, tls_enabled) {
+    assert(remote.base_protocol == 'http' || remote.base_protocol == 'grpc', 'unsupported base_protocol');
+    const protocol = remote.base_protocol + (tls_enabled ? 's' : '');
+    return protocol + '://' + remote.host + ':' + remote.port;
 }
 
 const logger = new(winston.Logger)({
@@ -33,17 +34,20 @@ const logger = new(winston.Logger)({
 });
 
 class SimpleClient {
-    constructor (netcfg, appcfg) {
+    // TODO: Supply netcfg only -- appcfg shouldn't be a concern of SimpleClient
+    constructor (netcfg, appcfg, tls_enabled) {
         // TODO: Use protobuf instead (with text-based reader so these config files can be read/written by humans)
-        this.netcfg = netcfg;
-        this.appcfg = appcfg;
+        this.netcfg         = netcfg;
+        this.appcfg         = appcfg;
+        this.tls_enabled    = tls_enabled;
 
         logger.info('SimpleClient()');
         logger.info('netcfg:', netcfg);
         logger.info('appcfg:', appcfg);
+        logger.info('tls_enabled:', tls_enabled);
 
         // Set up the GOPATH env var; NOTE: This is bad encapsulation, but it's used by fabric-sdk-node.
-        process.env.GOPATH = path.join(__dirname, appcfg.GOPATH);
+        process.env.GOPATH = path.resolve(__dirname, appcfg.GOPATH);
 
         // Create organizations.
         this.organizations  = {};
@@ -63,12 +67,12 @@ class SimpleClient {
                 const cryptoSuite_path  = appcfg.cryptoSuite_path_prefix + org_name;
                 const cryptoSuite       = FabricClient.newCryptoSuite({
                     software    : true,
-//                     keysize     : // This may be optional as well.  TODO: Specify in appcfg, or perhaps this is tied to the generated crypto materials.
-                    algorithm   : 'EC', // Docs say (as of v1.0.0 this is the only supported value)
-                    hash        : 'SHA3' // Does this need to match some external thing?
+//                     keysize     : 256, // This may be optional as well.  TODO: Specify in appcfg, or perhaps this is tied to the generated crypto materials.
+                    algorithm   : 'EC', // Docs say (as of v1.0.0) this is the only supported value
+                    hash        : 'SHA2' // Does this need to match some external thing?
                 });
                 org.ca = new FabricCAServices(
-                    assemble_url_from_remote(ca_cfg.remote),
+                    assemble_url_from_remote(ca_cfg.remote, this.tls_enabled),
                     ca_cfg.tlsOptions,
                     ca_cfg.caname,
                     cryptoSuite
@@ -78,33 +82,37 @@ class SimpleClient {
             // Add the orderers.
             org.orderers = {};
             for (const orderer_name in org_cfg.orderers) {
-                const orderer_cfg           = org_cfg.orderers[orderer_name];
+                const orderer_cfg                       = org_cfg.orderers[orderer_name];
                 logger.info('creating orderer "%s" using cfg %j', orderer_name, orderer_cfg);
-//                 const orderer_tls_cacerts = fs.readFileSync(path.join(__dirname, orderer_cfg.orderer_tls_cacerts_path));
-                org.orderers[orderer_name]  = client.newOrderer(
-                    assemble_url_from_remote(orderer_cfg.remote),
-                    {
-                        // NOTE: Currently TLS is disabled on the orderer, so leaving this out is fine.
-    //                     'pem'                     : Buffer.from(orderer_tls_cacerts).toString(),
-    //                     'ssl-target-name-override': orderer_cfg.ssl_target_name_override
-                    }
-                );
+                const orderer_url                       = assemble_url_from_remote(orderer_cfg.remote, this.tls_enabled);
+                const opts                              = {
+//                     'request-timeout' : 30000
+                }
+                if (this.tls_enabled) {
+                    const orderer_tls_cacert            = fs.readFileSync(path.resolve(__dirname, orderer_cfg.orderer_tls_cacert_path));
+                    opts['pem']                         = Buffer.from(orderer_tls_cacert).toString();
+                    opts['ssl-target-name-override']    = orderer_cfg.ssl_target_name_override;
+                }
+                logger.info('calling client.newOrderer with url "%s"', orderer_url);
+                org.orderers[orderer_name]              = client.newOrderer(orderer_url, opts);
             }
 
             // Add the peers and eventhubs
             org.peers = {};
             for (const peer_name in org_cfg.peers) {
-                const peer_cfg          = org_cfg.peers[peer_name];
+                const peer_cfg                          = org_cfg.peers[peer_name];
                 logger.info('creating peer "%s" using cfg %j', peer_name, peer_cfg);
-                const peer_tls_cacerts  = fs.readFileSync(path.join(__dirname, peer_cfg.peer_tls_cacerts_path));
-                const peer              = client.newPeer(
-                    assemble_url_from_remote(peer_cfg.requests_remote),
-                    {
-                        'pem'                     : Buffer.from(peer_tls_cacerts).toString(),
-                        'ssl-target-name-override': peer_cfg.ssl_target_name_override,
-                        'request-timeout'         : 120000 // NOTE: This is probably excessive, but for now use it.
-                    }
-                );
+                const peer_url                          = assemble_url_from_remote(peer_cfg.requests_remote, this.tls_enabled);
+                const opts                              = {
+//                     'request-timeout' : 30000
+                }
+                if (this.tls_enabled) {
+                    const peer_tls_cacert               = fs.readFileSync(path.resolve(__dirname, peer_cfg.peer_tls_cacert_path));
+                    opts['pem']                         = Buffer.from(peer_tls_cacert).toString();
+                    opts['ssl-target-name-override']    = peer_cfg.ssl_target_name_override;
+                }
+                logger.info('calling client.newPeer with url "%s"', peer_url);
+                const peer                              = client.newPeer(peer_url, opts);
 
                 org.peers[peer_name] = peer;
             }
@@ -119,6 +127,7 @@ class SimpleClient {
 
         // Create channel architectures.  The way this works is that organizations which are listed as participants in
         // a channel have newChain called on their Client object.
+        // TODO: Do this as part of create_channel__p (once that is implemented)
         for (const channel_name in appcfg.channels) {
             const channel_cfg                       = appcfg.channels[channel_name];
             logger.info('processing from appcfg: channel_cfg:', channel_cfg);
@@ -158,6 +167,7 @@ class SimpleClient {
     }
 
     // Returns a promise for creation of a kvs for each organization.
+    // TODO: Specify kvs_path_prefix instead of using appcfg
     create_kvs_for_each_org__p () {
         logger.info('create_kvs_for_each_org__p();');
         const promises = [];
@@ -189,36 +199,40 @@ class SimpleClient {
             const org_cfg       = this.netcfg.organizations[org_name];
             const client        = org.client;
             for (const user_name in org_cfg.users) {
-                const user_cfg                  = org_cfg.users[user_name];
-                // TODO: Probably specify cert/key filenames directly, instead of relying on particular dir structure/filename scheme
-                const user_msp_cert_dir         = fs.readdirSync(path.join(__dirname, user_cfg.msp_path, 'signcerts'));
-                assert(user_msp_cert_dir.length == 1, util.format('msp/signcerts directory must contain exactly 1 entry; actual was %j', user_msp_cert_dir));
-                const user_msp_key_dir          = fs.readdirSync(path.join(__dirname, user_cfg.msp_path, 'keystore'));
-                assert(user_msp_key_dir.length == 1, util.format('msp/keystore directory must contain exactly 1 entry; actual was %j', user_msp_key_dir));
-                logger.info('    org_name: "%s", user_name: "%s", user_msp_cert_dir: %j, user_msp_key_dir: %j', org_name, user_name, user_msp_cert_dir, user_msp_key_dir);
-                const user_msp_cert_filename    = path.join(__dirname, user_cfg.msp_path, 'signcerts', user_msp_cert_dir[0]);
-                const user_msp_key_filename     = path.join(__dirname, user_cfg.msp_path, 'keystore', user_msp_key_dir[0]);
-                const user_msp_cert             = fs.readFileSync(user_msp_cert_filename);
-                const user_msp_key              = fs.readFileSync(user_msp_key_filename);
-                logger.info('    calling client.createUser on user_cfg "%s" for organization "%s"', user_name, org_name);
-                promises.push(
-                    client.createUser({
-                        // Note -- this does not need to be the same as user_name -- it could be anything.
-                        // It just identifies the user to the client.
-                        username     : user_name,
-                        mspid        : org_cfg.mspid,
-                        cryptoContent: {
-                            signedCertPEM: Buffer.from(user_msp_cert).toString(),
-                            privateKeyPEM: Buffer.from(user_msp_key).toString()
-                        }
-                    })
-                    .then((user) => {
-                        logger.info('    client.createUser succeeded; user_name = "%s", org_name = "%s"', user_name, org_name);
-                        // This doesn't work because client is not reentrant (the user parameter is client._userContext
-                        // which if set by multiple parallel tasks, will screw things up).
-//                         logger.info('    client.createUser succeeded; user.getName() = "%s", org_name = "%s"', user.getName(), org_name);
-                    })
-                );
+                if (client.getUserContext(user_name, false) == null) { // false indicates synchronous call
+                    const user_cfg                  = org_cfg.users[user_name];
+                    // TODO: Probably specify cert/key filenames directly, instead of relying on particular dir structure/filename scheme
+                    const user_msp_cert_dir         = fs.readdirSync(path.resolve(__dirname, user_cfg.msp_path, 'signcerts'));
+                    assert(user_msp_cert_dir.length == 1, util.format('msp/signcerts directory must contain exactly 1 entry; actual was %j', user_msp_cert_dir));
+                    const user_msp_key_dir          = fs.readdirSync(path.resolve(__dirname, user_cfg.msp_path, 'keystore'));
+                    assert(user_msp_key_dir.length == 1, util.format('msp/keystore directory must contain exactly 1 entry; actual was %j', user_msp_key_dir));
+                    logger.info('    org_name: "%s", user_name: "%s", user_msp_cert_dir: %j, user_msp_key_dir: %j', org_name, user_name, user_msp_cert_dir, user_msp_key_dir);
+                    const user_msp_cert_filename    = path.resolve(__dirname, user_cfg.msp_path, 'signcerts', user_msp_cert_dir[0]);
+                    const user_msp_key_filename     = path.resolve(__dirname, user_cfg.msp_path, 'keystore', user_msp_key_dir[0]);
+                    const user_msp_cert             = fs.readFileSync(user_msp_cert_filename);
+                    const user_msp_key              = fs.readFileSync(user_msp_key_filename);
+                    logger.info('    calling client.createUser on user_cfg "%s" for organization "%s"', user_name, org_name);
+                    promises.push(
+                        client.createUser({
+                            // Note -- this does not need to be the same as user_name -- it could be anything.
+                            // It just identifies the user to the client.
+                            username     : user_name,
+                            mspid        : org_cfg.mspid,
+                            cryptoContent: {
+                                signedCertPEM: Buffer.from(user_msp_cert).toString(),
+                                privateKeyPEM: Buffer.from(user_msp_key).toString()
+                            }
+                        })
+                        .then((user) => {
+                            logger.info('    client.createUser succeeded; user_name = "%s", org_name = "%s"', user_name, org_name);
+                            // This doesn't work because client is not reentrant (the user parameter is client._userContext
+                            // which if set by multiple parallel tasks, will screw things up).
+    //                         logger.info('    client.createUser succeeded; user.getName() = "%s", org_name = "%s"', user.getName(), org_name);
+                        })
+                    );
+                } else {
+                    logger.info('    user "%s" already enrolled -- existed in KVS', user_name);
+                }
             }
         }
         return Promise.all(promises);
@@ -230,6 +244,73 @@ class SimpleClient {
 //             current_promise = current_promise.then(promise);
 //         }
 //         return current_promise;
+    }
+
+    // NOTE: Must have already successfully enrolled the specified registrar for this org.
+    // Can specify undefined for enrollment_secret to have the CA generate one for you.
+    register_user_in_org__p (user_name, enrollment_secret, role_string, affiliation, org_name, registrar_name) {
+        const org       = this.organizations[org_name];
+        const org_cfg   = this.netcfg.organizations[org_name];
+
+        logger.debug('register_user_in_org__p(); user_name = "%s", role_string = "%s", org_name = "%s", registrar_name = "%s"', user_name, role_string, org_name, registrar_name);
+        return org.client.getUserContext(registrar_name, true)
+        .then(registrar => {
+            logger.debug('    successfully got user context for registrar "%s"; calling ca.register.', registrar_name);
+            return org.ca.register(
+                {
+                    enrollmentID: user_name,
+                    enrollmentSecret: enrollment_secret,
+                    role: role_string,
+                    affiliation: affiliation,
+//                     affiliation: org_name, // TODO: Is this sufficient/correct?
+//                     affiliation: org_cfg.mspid, // TODO: Is this sufficient/correct?
+//                     affiliation: org_name+'_affiliation', // NOTE: For now, use a distinct string to see if there's a problem
+                    maxEnrollments: 0, // no limit to number of enrollments
+                    attrs: [] // NOTE: This is not used by fabric-sdk-node yet!
+                },
+                registrar
+            );
+        })
+        .then(returned_enrollment_secret => {
+            logger.debug('    successfully registered user "%s" within org "%s".', user_name, org_name);
+            if (enrollment_secret) {
+                assert(returned_enrollment_secret === enrollment_secret, 'enrollment secret returned from ca.register did not match provided one.');
+            }
+            return returned_enrollment_secret;
+        });
+    }
+
+    enroll_user_in_org__p (user_name, enrollment_secret, org_name) {
+        const org       = this.organizations[org_name];
+        const org_cfg   = this.netcfg.organizations[org_name];
+
+        logger.debug('enroll_user_in_org__p(); user_name = "%s", org_name = "%s"', user_name, org_name);
+        return org.ca.enroll({
+            enrollmentID: user_name,
+            enrollmentSecret: enrollment_secret
+        })
+        .then(results => {
+            logger.debug('    successfully enrolled user "%s" in org "%s"; saving user to client object by calling client.createUser', user_name, org_name);
+            return org.client.createUser({
+                username: user_name,
+                mspid: org_cfg.mspid,
+                cryptoContent: {
+                    signedCertPEM: results.certificate,
+                    privateKeyPEM: results.key.toBytes()
+                }
+            });
+        })
+        .then(user => {
+            logger.debug('    create user "%s" in org "%s" finished successfully.', user_name, org_name);
+            return user;
+        });
+    }
+
+    register_and_enroll_user_in_org__p (user_name, enrollment_secret, role_string, affiliation, org_name, registrar_name) {
+        return this.register_user_in_org__p(user_name, enrollment_secret, role_string, affiliation, org_name, registrar_name)
+        .then(returned_enrollment_secret => {
+            return this.enroll_user_in_org__p(user_name, returned_enrollment_secret, org_name);
+        })
     }
 
     create_channels__p () {
@@ -255,17 +336,24 @@ class SimpleClient {
                 assert(participating_orderer_org_cfg.length == 1, 'must specify exactly one element in the single participating orderer org entry for each channel in appcfg.json (for now -- this is a temporary limitation)');
                 const participating_orderer_name        = participating_orderer_org_cfg[0];
                 logger.info('for channel "%s", adding orderer "%s" from organization "%s"', channel_name, participating_orderer_name, participating_orderer_org_name);
-                channel_orderer = participating_orderer_org.orderers[participating_orderer_name];
+                channel_orderer                         = participating_orderer_org.orderers[participating_orderer_name];
             }
 
-            const configtx                  = fs.readFileSync(path.join(__dirname, channel_cfg.configtx_path));
+            const configtx                  = fs.readFileSync(path.resolve(__dirname, channel_cfg.configtx_path));
             promises.push(
                 channel_creator_client.getUserContext(channel_cfg.channel_creator_spec.user_name, true)
                 .then((channel_creator_user_) => {
                     const extracted_channel_config  = channel_creator_client.extractChannelConfig(configtx);
                     const signature                 = channel_creator_client.signChannelConfig(extracted_channel_config);
                     const txId                      = channel_creator_client.newTransactionID();
-                    logger.info('creating channel "%s" using organization "%s"\'s client', channel_name, channel_creator_org_name);
+
+//                     // TEMP HACK
+//                     {
+//                         const config = FabricClientUtils.getConfig();
+//                         logger.info('config:', config);
+//                     }
+                    logger.info('process.env.GRPC_SSL_CIPHER_SUITES = %j', process.env.GRPC_SSL_CIPHER_SUITES);
+                    logger.info('creating channel "%s" using organization "%s"\'s client; channel_orderer = %j', channel_name, channel_creator_org_name, channel_orderer);
                     return channel_creator_client.createChannel({
                         name: channel_name,
                         orderer: channel_orderer,
@@ -325,7 +413,7 @@ class SimpleClient {
                     .then(genesis_block_protobuf_ => {
                         logger.info('successfully retrieved genesis block');
                         genesis_block_protobuf = genesis_block_protobuf_;
-                        return client.getUserContext(participating_peer_org_cfg.channel_joiner_user_name, true)
+                        return client.getUserContext(participating_peer_org_cfg.channel_joiner_user_name, true);
                     })
                     // TODO: probably just make a "channel admin" user that does channel joining and install/instantiate.
                     .then(channel_joiner_user => {
@@ -339,6 +427,18 @@ class SimpleClient {
                         });
                     })
                     .then(result => {
+                        assert(result.length == targets.length, 'should have received as many results as targets');
+                        let err = null;
+                        // TODO: Make this error more descriptive and useful
+                        for (var i = 0; i < result.length; i++) {
+                            if (result[i] instanceof Error) {
+                                logger.info('channel.joinChannel produced error for peer org "%s", peer "%s"; error: %j', participating_peer_org_name, targets[i]._url, result[i]);
+                                if (err == null)
+                                    err = result[i];
+                            }
+                        }
+                        if (err != null)
+                            throw err;
                         logger.info('channel.joinChannel succeeded for peer org "%s"; result: %j', participating_peer_org_name, result);
                         logger.info('calling channel.initialize() for peer org "%s"', participating_peer_org_name);
                         return channel.initialize();
@@ -442,7 +542,8 @@ class SimpleClient {
     // - channel_name
     // - invoking_user_name
     // - invoking_user_org_name
-    // - args (the first of which should be the function name)
+    // - fcn
+    // - args
     // - query_only (a boolean indicating if the payload should just be returned after transaction
     //   proposal; i.e. the transaction won't be committed to the ledger).  Default is false.
     invoke__p (request) {
@@ -535,21 +636,22 @@ class SimpleClient {
                 return payload;
             }
 
-            // In fabric-sdk-node v1.0.0-alpha2, there is no way to create an EventHub via Client
-            // or Chain like there should be, so we have to require the internal EventHub.js source
-            // directly and create it by hand.
-
             // Create and connect to event hub after transaction proposal.  This is to be notified
             // when the transaction is committed or rejected.
-            const eventhub = new EventHub(client);
+            const eventhub                          = client.newEventHub();
             // Arbitrarily choose the "first" peer to connect to
-            const peer_cfg = invoking_user_org_cfg.peers[Object.keys(invoking_user_org_cfg.peers)[0]];
-            const eventhub_url = assemble_url_from_remote(peer_cfg.events_remote);
+            const peer_cfg                          = invoking_user_org_cfg.peers[Object.keys(invoking_user_org_cfg.peers)[0]];
+            const eventhub_url                      = assemble_url_from_remote(peer_cfg.events_remote, this.tls_enabled);
+            const opts                              = {
+                // default opts here
+            };
+            if (this.tls_enabled) {
+                const peer_tls_cacert               = fs.readFileSync(path.resolve(__dirname, peer_cfg.peer_tls_cacert_path));
+                opts['pem']                         = Buffer.from(peer_tls_cacert).toString();
+                opts['ssl-target-name-override']    = peer_cfg.ssl_target_name_override;
+            }
             logger.info('Connecting the event hub: ', eventhub_url);
-            eventhub.setPeerAddr(
-                eventhub_url,
-                undefined // TEMP TLS is disabled for now
-            );
+            eventhub.setPeerAddr(eventhub_url, opts);
             eventhub.connect();
 
             const eventhub_txId = txId.getTransactionID().toString();

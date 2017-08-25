@@ -13,7 +13,7 @@ Profiles:
         Orderer:
             <<: *OrdererDefaults
             Organizations:
-                - *OrdererOrg
+                - *Org2
         Consortiums:
             SampleConsortium:
                 Organizations:
@@ -39,28 +39,16 @@ Organizations:
 
     # SampleOrg defines an MSP using the sampleconfig.  It should never be used
     # in production but may be used as a template for other definitions
-    - &OrdererOrg
+    - &Org2
         # DefaultOrg defines the organization which is used in the sampleconfig
         # of the fabric.git development environment
-        Name: OrdererOrg
+        Name: Org2
 
         # ID to load the MSP definition as
-        ID: OrdererMSP
+        ID: Org2MSP
 
         # MSPDir is the filesystem path which contains the MSP configuration
-        MSPDir: ../generated-artifacts/crypto-config/ordererOrganizations/example.com/msp
-
-        # BCCSP (Blockchain crypto provider): Select which crypto implementation or
-        # library to use
-        BCCSP:
-            Default: SW
-            SW:
-                Hash: SHA2
-                Security: 256
-                # Location of Key Store. If this is unset, a location will
-                # be chosen using 'MSPDir'/keystore
-                FileKeyStore:
-                    KeyStore:
+        MSPDir: ../generated-artifacts/crypto-config/ordererOrganizations/org2.example.com/msp
 
     - &Org0
         # DefaultOrg defines the organization which is used in the sampleconfig
@@ -71,18 +59,6 @@ Organizations:
         ID: Org0MSP
 
         MSPDir: ../generated-artifacts/crypto-config/peerOrganizations/org0.example.com/msp
-
-        # BCCSP (Blockchain crypto provider): Select which crypto implementation or
-        # library to use
-        BCCSP:
-            Default: SW
-            SW:
-                Hash: SHA2
-                Security: 256
-                # Location of Key Store. If this is unset, a location will
-                # be chosen using 'MSPDir'/keystore
-                FileKeyStore:
-                    KeyStore:
 
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used
@@ -99,19 +75,8 @@ Organizations:
         # ID to load the MSP definition as
         ID: Org1MSP
 
+        # QUESTION: Why is there a path in the configtx?
         MSPDir: ../generated-artifacts/crypto-config/peerOrganizations/org1.example.com/msp
-
-        # BCCSP (Blockchain crypto provider): Select which crypto implementation or
-        # library to use
-        BCCSP:
-            Default: SW
-            SW:
-                Hash: SHA2
-                Security: 256
-                # Location of Key Store. If this is unset, a location will
-                # be chosen using 'MSPDir'/keystore
-                FileKeyStore:
-                    KeyStore:
 
         AnchorPeers:
             # AnchorPeers defines the location of peers which can be used
@@ -135,7 +100,7 @@ Orderer: &OrdererDefaults
     OrdererType: solo
 
     Addresses:
-        - orderer.example.com:7050
+        - orderer.org2.example.com:7050
 
     # Batch Timeout: The amount of time to wait before creating a batch
     BatchTimeout: 2s
