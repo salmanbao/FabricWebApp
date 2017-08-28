@@ -81,18 +81,25 @@ app.use('/', express.static(path.join(__dirname, '../client')));
 
 const temp_hardcoded_channel_name = 'mychannel';
 
-function invoke (invoking_user_name, invoking_user_org_name, fcn, req_query_arg_names, req, res) {
-    var key_error = check_request_query_for_keys(req.query, req_query_arg_names);
+function invoke (invoking_user_org_name, fcn, req_query_arg_names, req, res) {
+    var key_error = check_request_query_for_keys(req.query, ['invoking_user_name'].concat(req_query_arg_names));
     if (key_error !== null) {
         res.write(key_error);
         res.end();
         return;
     }
 
+    // TODO: throw error if the req.query lookups fail
+    const invoking_user_name = req.query['invoking_user_name'];
+
     const args = [];
     for (const req_query_arg_name of req_query_arg_names) {
+        // TODO: throw error if the req.query lookups fail
         args.push(req.query[req_query_arg_name]);
     }
+
+    console.log('invoke - req_query_arg_names = %j', req_query_arg_names);
+    console.log('invoke - args = %j', args);
 
     const description = util.format('INVOKE; invoking_user_name: "%s", invoking_user_org_name: "%s", fcn: "%s", args: %j', invoking_user_name, invoking_user_org_name, fcn, args);
 
@@ -118,18 +125,25 @@ function invoke (invoking_user_name, invoking_user_org_name, fcn, req_query_arg_
     });
 }
 
-function query (invoking_user_name, invoking_user_org_name, fcn, req_query_arg_names, req, res, complete_handler) {
-    var key_error = check_request_query_for_keys(req.query, req_query_arg_names);
+function query (invoking_user_org_name, fcn, req_query_arg_names, req, res, complete_handler) {
+    var key_error = check_request_query_for_keys(req.query, ['invoking_user_name'].concat(req_query_arg_names));
     if (key_error !== null) {
         res.write(key_error);
         res.end();
         return;
     }
 
+    // TODO: throw error if the req.query lookups fail
+    const invoking_user_name = req.query['invoking_user_name'];
+
     const args = [];
     for (const req_query_arg_name of req_query_arg_names) {
+        // TODO: throw error if the req.query lookups fail
         args.push(req.query[req_query_arg_name]);
     }
+
+    console.log('query - req_query_arg_names = %j', req_query_arg_names);
+    console.log('query - args = %j', args);
 
     const description = util.format('QUERY; invoking_user_name: "%s", invoking_user_org_name: "%s", fcn: "%s", args: %j', invoking_user_name, invoking_user_org_name, fcn, args);
 
@@ -160,21 +174,29 @@ function query (invoking_user_name, invoking_user_org_name, fcn, req_query_arg_n
 }
 
 // This defines a service endpoint on the server to which HTTP POST requests will be made,
-// ( e.g. localhost:3000/create_account?account_name=Bob&initial_balance=123 ).
+// ( e.g. localhost:3000/create_account?invoking_user_name=Admin&account_name=Bob&initial_balance=123 ).
 app.post('/create_account', function(req, res){
-    invoke('Admin', 'org0', 'create_account', ['account_name', 'initial_balance'], req, res);
+    // invoking_user_name is a required argument implicitly; this will be replaced if/when user sessions
+    // are added to the web client/server.
+    invoke('org0', 'create_account', ['account_name', 'initial_balance'], req, res);
 });
 
 app.post('/delete_account', function(req, res){
-    invoke('Admin', 'org0', 'delete_account', ['account_name'], req, res);
+    // invoking_user_name is a required argument implicitly; this will be replaced if/when user sessions
+    // are added to the web client/server.
+    invoke('org0', 'delete_account', ['account_name'], req, res);
 });
 
 app.post('/transfer', function(req, res){
-    invoke('Admin', 'org0', 'transfer', ['from_account_name', 'to_account_name', 'amount'], req, res);
+    // invoking_user_name is a required argument implicitly; this will be replaced if/when user sessions
+    // are added to the web client/server.
+    invoke('org0', 'transfer', ['from_account_name', 'to_account_name', 'amount'], req, res);
 });
 
 app.get('/query_balance', function(req, res){
-    query('Admin', 'org0', 'query_balance', ['account_name'], req, res);
+    // invoking_user_name is a required argument implicitly; this will be replaced if/when user sessions
+    // are added to the web client/server.
+    query('org0', 'query_balance', ['account_name'], req, res);
 });
 
 const SERVER_PORT = process.env.SERVER_PORT === undefined ? 3000 : process.env.SERVER_PORT;

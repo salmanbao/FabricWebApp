@@ -15,6 +15,7 @@
                 <button ng-click='switch_to_account(input_account_name)' style='flex-grow:1'>Switch To Account</button>
             </div>
             <br>
+            <div>Currently Using Account: <span ng-bind='current_account_name'></span></div>
             <div class='vertical-layout'>
                 <account-panel id='account_panel' context='null'></account-panel>
             </div>
