@@ -14,27 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Extensive modifications have been made to the original IBM-copyrighted file
+// by Victor Dods on behalf of LedgerDomain LLC.
+
 package main
 
 
 import (
+    "crypto/x509"
     "encoding/json"
+    "encoding/pem"
     "fmt"
+    mspprotos "github.com/hyperledger/fabric/protos/msp"
+    pb "github.com/hyperledger/fabric/protos/peer"
     "strconv"
     "strings"
-    "github.com/example_cc/util"
-
-    "github.com/hyperledger/fabric/core/chaincode/shim"
-    pb "github.com/hyperledger/fabric/protos/peer"
-)
-
-import (
-    "crypto/x509"
-    "encoding/pem"
-
     // NOTE: This is temporarily vendored INSIDE THE github.com/example_cc DIR!
     "github.com/example_cc/golang/protobuf/proto"
-    mspprotos "github.com/hyperledger/fabric/protos/msp"
+    "github.com/example_cc/util"
+    "github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
 // This code came from advice from Gari Singh
@@ -91,11 +89,8 @@ type SimpleChaincode struct {
 
 const CONFIG_TABLE = "ConfigTable"
 
-// The admin user is the unique user, defined by the transactor for the call to Init, that is allowed
-// to invoke the chaincode methods:
-// -    create_account
-// -    delete_account
-// -    query_account_names
+// The admin user is the unique privileged user, defined by the transactor for the call to Init, that is allowed
+// to invoke all chaincode methods.
 type Admin struct {
     Name string `json:"Name"`
 }
@@ -228,37 +223,21 @@ func transfer_ (stub shim.ChaincodeStubInterface, from_account_name string, to_a
 }
 
 func get_account_names_ (stub shim.ChaincodeStubInterface) ([]string, error) {
-//     func GetTableRows (
-//         stub            shim.ChaincodeStubInterface,
-//         table_name      string,
-//         row_keys        []string,
-//     ) (chan []byte, error) {
     row_json_bytes_channel,err := util.GetTableRows(stub, ACCOUNT_TABLE, []string{}) // empty row_keys to get all entries
     if err != nil {
         return nil, fmt.Errorf("Could not get account names; %v", err.Error())
     }
 
     var account_names []string
-//     var buffer bytes.Buffer
     var account Account
-//     buffer.WriteString("[")
-//     has_written_row := false
     for row_json_bytes := range(row_json_bytes_channel) {
-//         if has_written_row {
-//             buffer.WriteString(",")
-//         }
-//
         err = json.Unmarshal(row_json_bytes, &account)
         if err != nil {
             return nil, fmt.Errorf("Could not get account names; json.Unmarshal of \"%s\" failed with error %v", string(row_json_bytes), err)
         }
 
-//         buffer.WriteString(fmt.Sprintf("\"%s\"", account.Name))
         account_names = append(account_names, account.Name)
-//         has_written_row = true
     }
-//     buffer.WriteString("]")
-//     return buffer.Bytes(), nil
     return account_names, nil
 }
 
