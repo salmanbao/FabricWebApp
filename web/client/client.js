@@ -88,6 +88,9 @@ angular
     $scope.query_balance = function (invoking_user_name, account_name) {
         return $scope.get('query_balance', {invoking_user_name:invoking_user_name, account_name:account_name});
     };
+    $scope.query_account_names = function (invoking_user_name) {
+        return $scope.get('query_account_names', {invoking_user_name:invoking_user_name});
+    };
     $scope.clear_input_fields = function () {
         $scope.create_account__invoking_user_name = null;
         $scope.create_account__account_name = null;
@@ -103,6 +106,8 @@ angular
 
         $scope.query_balance__invoking_user_name = null;
         $scope.query_balance__account_name = null;
+
+        $scope.query_account_names__invoking_user_name = null;
     }
 
     $timeout(() => {

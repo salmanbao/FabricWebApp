@@ -8,7 +8,7 @@
     <link rel='stylesheet' type='text/css' href='style.css'>
 </head>
 <body ng-app='app' ng-controller='controller'>
-    <div class='horizontal-layout' style='height:100vh; width:100vw'>
+    <div class='horizontal-layout' style='height:97vh; width:98vw'>
         <div class='vertical-layout' style='width:50vw'>
             <div style='display:flex; justify-content:space-between'>
                 <span>Available Actions:</span>
@@ -19,11 +19,11 @@
                 <input type='text' ng-model='create_account__initial_balance' placeholder='Initial Balance'>
                 <button ng-click='create_account(create_account__invoking_user_name, create_account__account_name, create_account__initial_balance)'>Create Account</button>
             </div>
-            <div>
+<!--            <div>
                 <input type='text' ng-model='delete_account__invoking_user_name' placeholder='Invoking User Name'>
                 <input type='text' ng-model='delete_account__account_name' placeholder='Account Name'>
                 <button ng-click='delete_account(delete_account__invoking_user_name, delete_account__account_name)'>Delete Account</button>
-            </div>
+            </div>-->
             <div>
                 <input type='text' ng-model='transfer__invoking_user_name' placeholder='Invoking User Name'>
                 <input type='text' ng-model='transfer__from_account_name' placeholder='From Account Name'>
@@ -35,6 +35,10 @@
                 <input type='text' ng-model='query_balance__invoking_user_name' placeholder='Invoking User Name'>
                 <input type='text' ng-model='query_balance__account_name' placeholder='Account Name'>
                 <button ng-click='query_balance(query_balance__invoking_user_name, query_balance__account_name)'>Query Balance</button>
+            </div>
+            <div>
+                <input type='text' ng-model='query_account_names__invoking_user_name' placeholder='Invoking User Name'>
+                <button ng-click='query_account_names(query_account_names__invoking_user_name)'>Query Account Names</button>
             </div>
             <div>
                 <button ng-click='clear_input_fields()'>Clear Input Fields</button>

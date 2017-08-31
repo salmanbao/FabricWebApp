@@ -171,27 +171,34 @@ Promise.resolve()
     ]);
 })
 .then(results => {
-    assert(results[0] == '123', 'unexpected results');
-    assert(results[1] == '456', 'unexpected results');
-    assert(results[2] == '123', 'unexpected results');
-    assert(results[3] == '456', 'unexpected results');
+    assert(results[0] == '{"Name":"alice","Balance":123}', 'unexpected results');
+    assert(results[1] == '{"Name":"bob","Balance":456}', 'unexpected results');
+    assert(results[2] == '{"Name":"alice","Balance":123}', 'unexpected results');
+    assert(results[3] == '{"Name":"bob","Balance":456}', 'unexpected results');
 })
 
 
+.then(() => {
+    return simple_client.enroll_user_in_org__p('admin', 'adminpw', 'org1');
+})
+.then(user => {
+    logger.debug('enroll_user_in_org__p admin in org1 succeeded.');
+    return simple_client.register_and_enroll_user_in_org__p('FancyUser', 'FancyPassword', 'user', 'org1.department1', 'org1', 'admin');
+})
+.then(enrollment_secret => {
+    logger.debug('register_and_enroll_user_in_org__p FancyUser in org1 succeeded; enrollment_secret = "%s"', enrollment_secret);
+})
 
-// .then(() => {
-// //     return simple_client.register_user_in_org__p('FancyUser', 'FancyPassword', 'user', 'org1.department1', 'org1', 'Admin');
-//     return simple_client.enroll_user_in_org__p('admin', 'adminpw', 'org1');
-// })
-// .then(user => {
-//     return simple_client.register_and_enroll_user_in_org__p('FancyUser', 'FancyPassword', 'user', 'org1.department1', 'org1', 'admin');
-// })
-// .then(enrollment_secret => {
-//     logger.debug('register_user_in_org__p succeeded; enrollment_secret = "%s"', enrollment_secret);
-// })
-// .then(() => {
-//     logger.debug('enroll_user_in_org__p succeeded');
-// })
+.then(() => {
+    return simple_client.enroll_user_in_org__p('admin', 'adminpw', 'org0');
+})
+.then(user => {
+    logger.debug('enroll_user_in_org__p admin in org0 succeeded.');
+    return simple_client.register_and_enroll_user_in_org__p('BoringUser', 'BoringPassword', 'user', 'org1.department1', 'org0', 'admin');
+})
+.then(enrollment_secret => {
+    logger.debug('register_and_enroll_user_in_org__p BoringUser in org0 succeeded; enrollment_secret = "%s"', enrollment_secret);
+})
 
 
 // .then(() => {

@@ -71,9 +71,24 @@ class SimpleClient {
                     algorithm   : 'EC', // Docs say (as of v1.0.0) this is the only supported value
                     hash        : 'SHA2' // Does this need to match some external thing?
                 });
+                const tlsOptions = {
+                    trustedRoots: []
+                };
+                if (this.tls_enabled) {
+                    for (const trusted_root_path of ca_cfg.trusted_root_paths) {
+                        const trusted_root_resolved_path = path.resolve(__dirname, trusted_root_path);
+                        logger.info('org "' + org_name + '" adding CA; adding trusted root cert "' + trusted_root_resolved_path + '"');
+                        const trusted_root_cacert = fs.readFileSync(trusted_root_resolved_path);
+                        tlsOptions.trustedRoots.push(Buffer.from(trusted_root_cacert).toString());
+                    }
+                }
+                // This is what specifies if the TLS server's cert will be checked against the trusted root certificates.
+                // Even if the check is not done, if TLS is enabled, the connection will be encrypted.
+                // WARNING: if the check is not done, then the connection is vulnerable to man-in-the-middle attacks.
+                tlsOptions.verify = ca_cfg.rejectUnauthorized;
                 org.ca = new FabricCAServices(
                     assemble_url_from_remote(ca_cfg.remote, this.tls_enabled),
-                    ca_cfg.tlsOptions,
+                    tlsOptions,
                     ca_cfg.caname,
                     cryptoSuite
                 );
@@ -252,19 +267,16 @@ class SimpleClient {
         const org       = this.organizations[org_name];
         const org_cfg   = this.netcfg.organizations[org_name];
 
-        logger.debug('register_user_in_org__p(); user_name = "%s", role_string = "%s", org_name = "%s", registrar_name = "%s"', user_name, role_string, org_name, registrar_name);
+        logger.info('register_user_in_org__p(); user_name = "%s", role_string = "%s", org_name = "%s", registrar_name = "%s"', user_name, role_string, org_name, registrar_name);
         return org.client.getUserContext(registrar_name, true)
         .then(registrar => {
-            logger.debug('    successfully got user context for registrar "%s"; calling ca.register.', registrar_name);
+            logger.info('    successfully got user context for registrar "%s"; calling ca.register.', registrar_name);
             return org.ca.register(
                 {
                     enrollmentID: user_name,
                     enrollmentSecret: enrollment_secret,
                     role: role_string,
                     affiliation: affiliation,
-//                     affiliation: org_name, // TODO: Is this sufficient/correct?
-//                     affiliation: org_cfg.mspid, // TODO: Is this sufficient/correct?
-//                     affiliation: org_name+'_affiliation', // NOTE: For now, use a distinct string to see if there's a problem
                     maxEnrollments: 0, // no limit to number of enrollments
                     attrs: [] // NOTE: This is not used by fabric-sdk-node yet!
                 },
@@ -272,7 +284,7 @@ class SimpleClient {
             );
         })
         .then(returned_enrollment_secret => {
-            logger.debug('    successfully registered user "%s" within org "%s".', user_name, org_name);
+            logger.info('    successfully registered user "%s" within org "%s".', user_name, org_name);
             if (enrollment_secret) {
                 assert(returned_enrollment_secret === enrollment_secret, 'enrollment secret returned from ca.register did not match provided one.');
             }
@@ -284,13 +296,13 @@ class SimpleClient {
         const org       = this.organizations[org_name];
         const org_cfg   = this.netcfg.organizations[org_name];
 
-        logger.debug('enroll_user_in_org__p(); user_name = "%s", org_name = "%s"', user_name, org_name);
+        logger.info('enroll_user_in_org__p(); user_name = "%s", org_name = "%s"', user_name, org_name);
         return org.ca.enroll({
             enrollmentID: user_name,
             enrollmentSecret: enrollment_secret
         })
         .then(results => {
-            logger.debug('    successfully enrolled user "%s" in org "%s"; saving user to client object by calling client.createUser', user_name, org_name);
+            logger.info('    successfully enrolled user "%s" in org "%s"; saving user to client object by calling client.createUser', user_name, org_name);
             return org.client.createUser({
                 username: user_name,
                 mspid: org_cfg.mspid,
@@ -301,10 +313,34 @@ class SimpleClient {
             });
         })
         .then(user => {
-            logger.debug('    create user "%s" in org "%s" finished successfully.', user_name, org_name);
+            logger.info('    create user "%s" in org "%s" finished successfully.', user_name, org_name);
             return user;
         });
     }
+
+//     revoke_enrollment_for_user_in_org__p (user_name, org_name, reason, registrar_name) {
+//         const org       = this.organizations[org_name];
+//         const org_cfg   = this.netcfg.organizations[org_name];
+//
+//         logger.info('revoke_enrollment_for_user_in_org__p(); user_name = "%s", org_name = "%s", registrar_name = "%s"', user_name, org_name, registrar_name);
+//         return org.client.getUserContext(registrar_name, true)
+//         .then(registrar => {
+//             logger.info('    successfully got user context for registrar "%s"; calling ca.revoke.', registrar_name);
+//             return org.ca.revoke(
+//                 {
+//                     enrollmentID: user_name,
+//                     reason: reason
+//                 },
+//                 registrar
+//             );
+//         })
+//         .then(result => {
+//             // TODO: Probably need to alter or delete the applicable user context
+//
+//             logger.info('    completed revocation of enrollment for user "%s" within org "%s" for reason "%s"; result was %j', user_name, org_name, reason, result);
+//             return result;
+//         });
+//     }
 
     register_and_enroll_user_in_org__p (user_name, enrollment_secret, role_string, affiliation, org_name, registrar_name) {
         return this.register_user_in_org__p(user_name, enrollment_secret, role_string, affiliation, org_name, registrar_name)
@@ -571,7 +607,6 @@ class SimpleClient {
         // as each operation finishes.  return a dict having keys proposal_promise
         // and completion_promise (or commit_promise)
 
-        // TEMP HACK - just invoke using Admin account
         return client.getUserContext(invoking_user_name, true)
         .then(user => {
             txId = client.newTransactionID();

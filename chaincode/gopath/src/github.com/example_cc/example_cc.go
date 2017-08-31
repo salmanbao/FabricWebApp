@@ -18,9 +18,11 @@ package main
 
 
 import (
+    "encoding/json"
     "fmt"
     "strconv"
     "strings"
+    "github.com/example_cc/util"
 
     "github.com/hyperledger/fabric/core/chaincode/shim"
     pb "github.com/hyperledger/fabric/protos/peer"
@@ -83,20 +85,204 @@ func AccountKey (account_name string) (string, error) {
 type SimpleChaincode struct {
 }
 
+//
+// Config related functions
+//
+
+const CONFIG_TABLE = "ConfigTable"
+
+// The admin user is the unique user, defined by the transactor for the call to Init, that is allowed
+// to invoke the chaincode methods:
+// -    create_account
+// -    delete_account
+// -    query_account_names
+type Admin struct {
+    Name string `json:"Name"`
+}
+
+func set_admin (stub shim.ChaincodeStubInterface, admin *Admin) error {
+    var old_admin Admin
+    row_was_found,err := util.InsertTableRow(stub, CONFIG_TABLE, []string{"Admin"}, admin, util.DONT_FAIL_UPON_OVERWRITE, &old_admin)
+    if err != nil {
+        return fmt.Errorf("Error setting %s Admin value to %v; error was %v", CONFIG_TABLE, admin, err.Error())
+    }
+    if row_was_found && *admin != old_admin {
+        fmt.Print("WARNING: Setting Admin to %v, which is different than previous value of %v", admin, old_admin)
+    }
+    return nil // success
+}
+
+// If err is not nil, then admin is nil, and vice versa.
+func get_admin (stub shim.ChaincodeStubInterface) (*Admin, error) {
+    var admin Admin
+    row_was_found,err := util.GetTableRow(stub, CONFIG_TABLE, []string{"Admin"}, &admin, util.FAIL_IF_MISSING)
+    if err != nil {
+        return nil,fmt.Errorf("Could not retrieve Admin; error was %v", err.Error())
+    }
+    if !row_was_found {
+        return nil,fmt.Errorf("Admin entry in %s not found", CONFIG_TABLE)
+    }
+    return &admin,nil
+}
+
+//
+// transactor determining functions
+//
+
+func transactor_is (stub shim.ChaincodeStubInterface, common_name string) bool {
+    return GetTransactorCommonName(stub) == common_name
+}
+
+func transactor_is_admin (stub shim.ChaincodeStubInterface) bool {
+    admin,err := get_admin(stub)
+    if err != nil {
+        return false
+    }
+    return GetTransactorCommonName(stub) == admin.Name
+}
+
+//
+// user account related functions
+//
+
+const ACCOUNT_TABLE = "AccountTable"
+
+type Account struct {
+    Name    string  `json:"Name"`
+    Balance int     `json:"Balance"`
+}
+
+func row_keys_of_Account (account *Account) []string {
+    return []string{account.Name}
+}
+
+// Raw form of function which does no permissions checking
+func create_account_ (stub shim.ChaincodeStubInterface, account *Account) error {
+    var old_account Account
+    row_was_found,err := util.InsertTableRow(stub, ACCOUNT_TABLE, row_keys_of_Account(account), account, util.FAIL_BEFORE_OVERWRITE, &old_account)
+    if err != nil {
+        return err
+    }
+    if row_was_found {
+        return fmt.Errorf("Could not create account %v because an account with that Name already exists", *account)
+    }
+    return nil // success
+}
+
+// Raw form of function which does no permissions checking
+func overwrite_account_ (stub shim.ChaincodeStubInterface, account *Account) error {
+    _,err := util.InsertTableRow(stub, ACCOUNT_TABLE, row_keys_of_Account(account), account, util.FAIL_UNLESS_OVERWRITE, nil)
+    return err
+}
+
+// Raw form of function which does no permissions checking
+func delete_account_ (stub shim.ChaincodeStubInterface, account_name string) error {
+    _,err := util.DeleteTableRow(stub, ACCOUNT_TABLE, []string{account_name}, nil, util.FAIL_IF_MISSING)
+    return err
+}
+
+// Raw form of function which does no permissions checking
+func get_account_ (stub shim.ChaincodeStubInterface, account_name string) (*Account, error) {
+    var account Account
+    row_was_found,err := util.GetTableRow(stub, ACCOUNT_TABLE, []string{account_name}, &account, util.FAIL_IF_MISSING)
+    if err != nil {
+        return nil,fmt.Errorf("Could not retrieve account named \"%s\"; error was %v", account_name, err.Error())
+    }
+    if !row_was_found {
+        return nil,fmt.Errorf("Account named \"%s\" does not exist", account_name)
+    }
+    return &account,nil
+}
+
+// Raw form of function which does no permissions checking
+func transfer_ (stub shim.ChaincodeStubInterface, from_account_name string, to_account_name string, amount int) error {
+    if amount < 0 {
+        return fmt.Errorf("Can't transfer a negative amount (%d)", amount)
+    }
+    from_account,err := get_account_(stub, from_account_name)
+    if err != nil {
+        return fmt.Errorf("Error in retrieving \"from\" account \"%s\"; %v", from_account_name, err.Error())
+    }
+    to_account,err := get_account_(stub, to_account_name)
+    if err != nil {
+        return fmt.Errorf("Error in retrieving \"to\" account \"%s\"; %v", to_account_name, err.Error())
+    }
+    if from_account.Balance < amount {
+        return fmt.Errorf("Can't transfer; \"from\" account balance (%d) is less than transfer amount (%d)", from_account.Balance, amount)
+    }
+
+    from_account.Balance -= amount
+    to_account.Balance += amount
+
+    err = overwrite_account_(stub, from_account)
+    if err != nil {
+        return fmt.Errorf("Could not transfer from account %v; error was %v", *from_account, err.Error())
+    }
+
+    err = overwrite_account_(stub, to_account)
+    if err != nil {
+        return fmt.Errorf("Could not transfer to account %v; error was %v", *to_account, err.Error())
+    }
+
+    return nil
+}
+
+func get_account_names_ (stub shim.ChaincodeStubInterface) ([]string, error) {
+//     func GetTableRows (
+//         stub            shim.ChaincodeStubInterface,
+//         table_name      string,
+//         row_keys        []string,
+//     ) (chan []byte, error) {
+    row_json_bytes_channel,err := util.GetTableRows(stub, ACCOUNT_TABLE, []string{}) // empty row_keys to get all entries
+    if err != nil {
+        return nil, fmt.Errorf("Could not get account names; %v", err.Error())
+    }
+
+    var account_names []string
+//     var buffer bytes.Buffer
+    var account Account
+//     buffer.WriteString("[")
+//     has_written_row := false
+    for row_json_bytes := range(row_json_bytes_channel) {
+//         if has_written_row {
+//             buffer.WriteString(",")
+//         }
+//
+        err = json.Unmarshal(row_json_bytes, &account)
+        if err != nil {
+            return nil, fmt.Errorf("Could not get account names; json.Unmarshal of \"%s\" failed with error %v", string(row_json_bytes), err)
+        }
+
+//         buffer.WriteString(fmt.Sprintf("\"%s\"", account.Name))
+        account_names = append(account_names, account.Name)
+//         has_written_row = true
+    }
+//     buffer.WriteString("]")
+//     return buffer.Bytes(), nil
+    return account_names, nil
+}
+
+//
+// chaincode API functions
+//
+
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response  {
     fmt.Println("########### example_cc Init ###########")
     _, args := stub.GetFunctionAndParameters()
+    if len(args) != 0 {
+        return shim.Error("Incorrect number of arguments. Expecting 0")
+    }
 
     fmt.Printf("within Init : GetTransactorCommonName(stub): %v\n", GetTransactorCommonName(stub))
 
-    if len(args) != 0 {
-        return shim.Error("Incorrect number of arguments. Expecting 0")
+    err := set_admin(stub, &Admin{Name:GetTransactorCommonName(stub)})
+    if err != nil {
+        return shim.Error(fmt.Sprintf("Init failed; %v", err.Error()))
     }
 
     return shim.Success(nil)
 }
 
-// Transaction makes payment of X units from A to B
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
     fmt.Println("########### example_cc Invoke ###########")
     function, args := stub.GetFunctionAndParameters()
@@ -111,50 +297,19 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
         // Deletes an account.
         return t.delete_account(stub, args)
     }
-    if function == "query_balance" {
-        // Queries an account balance.
-        return t.query_balance(stub, args)
-    }
     if function == "transfer" {
         // Transfers an amount from one account to another.
         return t.transfer(stub, args)
     }
+    if function == "query_balance" {
+        // Queries an account balance.
+        return t.query_balance(stub, args)
+    }
+    if function == "query_account_names" {
+        // Queries all account names.
+        return t.query_account_names(stub, args)
+    }
     return shim.Error(fmt.Sprintf("Unknown action '%s', check the first argument, must be one of 'create_account', 'delete', 'query_balance', or 'transfer'", function))
-}
-
-func (t *SimpleChaincode) set_admin_name (stub shim.ChaincodeStubInterface, args []string) pb.Response {
-    if len(args) != 0 {
-        return shim.Error("Incorrect number of arguments.  Expecting 0")
-    }
-
-    // Retrieve the admin name from the cert and validate its formatting.
-    admin_name := GetTransactorCommonName(stub)
-    err := ValidateUserNameFormat(admin_name)
-    if err != nil {
-        return shim.Error(fmt.Sprintf("Could not set admin name to \"%s\"; %v", admin_name, err.Error()))
-    }
-
-    admin_name_key,err := AdminNameKey()
-    if err != nil {
-        return shim.Error(err.Error())
-    }
-
-    // Check if the admin has been set already
-    existing_account_state,err := stub.GetState(admin_name_key)
-    if err != nil {
-        return shim.Error(err.Error()) // TODO: Better error message
-    }
-    if existing_account_state != nil {
-        return shim.Error(fmt.Sprintf("Could not set admin name to \"%s\"; admin already set to \"%s\"", admin_name, string(existing_account_state)))
-    }
-
-    // Write the account balance to the ledger.
-    err = stub.PutState(admin_name_key, []byte(admin_name))
-    if err != nil {
-        return shim.Error(err.Error()) // TODO: Better error message
-    }
-
-    return shim.Success(nil)
 }
 
 func (t *SimpleChaincode) create_account (stub shim.ChaincodeStubInterface, args []string) pb.Response {
@@ -162,7 +317,9 @@ func (t *SimpleChaincode) create_account (stub shim.ChaincodeStubInterface, args
         return shim.Error("Incorrect number of arguments.  Expecting 2; account_holder_name and initial_balance")
     }
 
-    // TODO: Verify that the caller is the admin.
+    if !transactor_is_admin(stub) {
+        return shim.Error(fmt.Sprintf("Could not create account; transactor \"%s\" is not the registered admin user", GetTransactorCommonName(stub)))
+    }
 
     // Parse and validate the args.
     account_holder_name := args[0]
@@ -174,96 +331,32 @@ func (t *SimpleChaincode) create_account (stub shim.ChaincodeStubInterface, args
         return shim.Error(fmt.Sprintf("Invalid initial_balance %v; expecting nonnegative integer", initial_balance))
     }
 
-    // Generate the account key (which also checks the account name validity)
-    account_key,err := AccountKey(account_holder_name)
+    err = create_account_(stub, &Account{Name:account_holder_name, Balance:initial_balance})
     if err != nil {
-        return shim.Error(fmt.Sprintf("Could not create account with name \"%s\"; %v", account_holder_name, err.Error()))
-    }
-
-    // Check for an existing account
-    existing_account_state,err := stub.GetState(account_key)
-    if err != nil {
-        return shim.Error(err.Error()) // TODO: Better error message
-    }
-    if existing_account_state != nil {
-        return shim.Error(fmt.Sprintf("Could not create account for \"%s\"; account already exists", account_holder_name))
-    }
-
-    // Write the account balance to the ledger.
-    err = stub.PutState(account_key, []byte(strconv.Itoa(initial_balance)))
-    if err != nil {
-        return shim.Error(err.Error()) // TODO: Better error message
+        return shim.Error(err.Error())
     }
 
     return shim.Success(nil)
 }
 
 func (t *SimpleChaincode) transfer (stub shim.ChaincodeStubInterface, args []string) pb.Response {
-    // must be an invoke
-    var A, B string    // Entities
-    var Aval, Bval int // Asset holdings
-    var X int          // Transaction value
-    var err error
-
-    // TODO: Change the calling convention to derive the "from" account to be the transactor
-
     if len(args) != 3 {
         return shim.Error("Incorrect number of arguments. Expecting 3; 2 names and 1 value")
     }
 
-    A = args[0]
-    B = args[1]
-    X, err = strconv.Atoi(args[2])
+    from_account_name := args[0]
+    to_account_name := args[1]
+    amount, err := strconv.Atoi(args[2])
     if err != nil {
-        return shim.Error("Invalid transaction amount, expecting a integer value")
+        return shim.Error(fmt.Sprintf("Invalid transaction amount \"%s\", expecting a integer value", args[2]))
     }
 
-    // Generate the account key (which also checks the account name validity)
-    A_account_key,err := AccountKey(A)
-    if err != nil {
-        return shim.Error(fmt.Sprintf("Could not transfer from account \"%s\"; %v", A, err.Error()))
+    // Admin is allowed to transfer, and the account holder is allowed to transfer.
+    if !transactor_is_admin(stub) && !transactor_is(stub, from_account_name) {
+        return shim.Error(fmt.Sprintf("User \"%s\" is not authorized to transfer from account \"%s\"", GetTransactorCommonName(stub), from_account_name))
     }
 
-    // Generate the account key (which also checks the account name validity)
-    B_account_key,err := AccountKey(B)
-    if err != nil {
-        return shim.Error(fmt.Sprintf("Could not transfer from account \"%s\"; %v", B, err.Error()))
-    }
-
-    // Get the state from the ledger
-    // TODO: will be nice to have a GetAllState call to ledger
-    Avalbytes, err := stub.GetState(A_account_key)
-    if err != nil {
-        return shim.Error("Failed to get state")
-    }
-    if Avalbytes == nil {
-        return shim.Error("Entity not found")
-    }
-    Aval, _ = strconv.Atoi(string(Avalbytes))
-
-    Bvalbytes, err := stub.GetState(B_account_key)
-    if err != nil {
-        return shim.Error("Failed to get state")
-    }
-    if Bvalbytes == nil {
-        return shim.Error("Entity not found")
-    }
-    Bval, _ = strconv.Atoi(string(Bvalbytes))
-
-    // TODO: Check if the "from" account has enough to transfer
-
-    // Perform the execution
-    Aval = Aval - X
-    Bval = Bval + X
-    fmt.Printf("Aval = %d, Bval = %d\n", Aval, Bval)
-
-    // Write the state back to the ledger
-    err = stub.PutState(A_account_key, []byte(strconv.Itoa(Aval)))
-    if err != nil {
-        return shim.Error(err.Error())
-    }
-
-    err = stub.PutState(B_account_key, []byte(strconv.Itoa(Bval)))
+    err = transfer_(stub, from_account_name, to_account_name, amount)
     if err != nil {
         return shim.Error(err.Error())
     }
@@ -277,18 +370,15 @@ func (t *SimpleChaincode) delete_account (stub shim.ChaincodeStubInterface, args
         return shim.Error("Incorrect number of arguments. Expecting 1")
     }
 
-    A := args[0]
-
-    // Generate the account key (which also checks the account name validity)
-    A_account_key,err := AccountKey(A)
-    if err != nil {
-        return shim.Error(fmt.Sprintf("Could not delete account \"%s\"; %v", A, err.Error()))
+    // only Admin is allowed to delete accounts
+    if !transactor_is_admin(stub) {
+        return shim.Error("Only admin user is not authorized to delete_account")
     }
 
-    // Delete the key from the state in ledger
-    err = stub.DelState(A_account_key)
+    account_name := args[0]
+    err := delete_account_(stub, account_name)
     if err != nil {
-        return shim.Error("Failed to delete state")
+        return shim.Error(err.Error())
     }
 
     return shim.Success(nil)
@@ -296,36 +386,59 @@ func (t *SimpleChaincode) delete_account (stub shim.ChaincodeStubInterface, args
 
 // Query the balance of an account with specified username.
 func (t *SimpleChaincode) query_balance (stub shim.ChaincodeStubInterface, args []string) pb.Response {
-
-    var A string // Entities
-    var err error
-
     if len(args) != 1 {
         return shim.Error("Incorrect number of arguments. Expecting name of the person to query")
     }
 
-    A = args[0]
+    account_name := args[0]
 
-    // Generate the account key (which also checks the account name validity)
-    A_account_key,err := AccountKey(A)
+    // Admin is allowed to query_balance, and the account holder is allowed to query_balance.
+    if !transactor_is_admin(stub) && !transactor_is(stub, account_name) {
+        return shim.Error(fmt.Sprintf("User \"%s\" is not authorized to query account \"%s\"", GetTransactorCommonName(stub), account_name))
+    }
+
+    account,err := get_account_(stub, account_name)
     if err != nil {
-        return shim.Error(fmt.Sprintf("Could not query account \"%s\"; %v", A, err.Error()))
+        return shim.Error(fmt.Sprintf("Could not query_balance for account \"%s\"; error was %v", account_name, err))
     }
 
-    // Get the state from the ledger
-    Avalbytes, err := stub.GetState(A_account_key)
+    // Serialize Account struct as JSON
+    bytes,err := json.Marshal(account)
     if err != nil {
-        jsonResp := "{\"Error\":\"Failed to get state for " + A + "\"}"
-        return shim.Error(jsonResp)
+        return shim.Error(fmt.Sprintf("Serializing account failed in query_balance because json.Marshal failed with error %v", err))
     }
-    if Avalbytes == nil {
-        jsonResp := "{\"Error\":\"Account named \"" + A + "\" does not exist\"}"
-        return shim.Error(jsonResp)
+    fmt.Printf("query_balance Response: %s\n", string(bytes))
+    return shim.Success(bytes)
+}
+
+// Query all account names
+func (t *SimpleChaincode) query_account_names (stub shim.ChaincodeStubInterface, args []string) pb.Response {
+    if len(args) != 0 {
+        return shim.Error(fmt.Sprintf("Incorrect number of arguments. Expecting 0 arguments, got %v", args))
     }
 
-    jsonResp := "{\"Name\":\"" + A + "\",\"Amount\":\"" + string(Avalbytes) + "\"}"
-    fmt.Printf("Query Response:%s\n", jsonResp)
-    return shim.Success(Avalbytes)
+    // only Admin is allowed to query_account_names
+    if !transactor_is_admin(stub) {
+        return shim.Error("Only admin user is authorized to query_account_names")
+    }
+
+    account_names,err := get_account_names_(stub)
+    if err != nil {
+        return shim.Error(fmt.Sprintf("Could not query_account_names due to error %v", err.Error()))
+    }
+
+    var bytes []byte
+    if len(account_names) == 0 {
+        bytes = []byte("[]")
+    } else {
+        // Serialize account names as JSON
+        bytes,err = json.Marshal(account_names)
+        if err != nil {
+            return shim.Error(fmt.Sprintf("Serializing account names failed in query_account_names because json.Marshal failed with error %v", err))
+        }
+    }
+    fmt.Printf("query_account_names response: %s\n", string(bytes))
+    return shim.Success(bytes)
 }
 
 func main() {

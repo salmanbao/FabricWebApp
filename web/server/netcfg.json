@@ -1,28 +1,5 @@
 {
     "organizations": {
-        "org2": {
-            "name": "org2",
-            "mspid": "Org2MSP",
-            "ca": null,
-            "orderers": {
-                "orderer.org2.example.com": {
-                    "remote": {
-                        "base_protocol": "grpc",
-                        "host": "orderer.org2.example.com",
-                        "port": 7050
-                    },
-                    "ssl_target_name_override": "orderer.org2.example.com",
-                    "orderer_tls_cacert_path": "/var/hyperledger/www/config/crypto-config/org2.example.com/trusted-roots/ca-cert.pem"
-                }
-            },
-            "peers": {
-            },
-            "users": {
-                "Admin": {
-                    "msp_path": "/var/hyperledger/www/config/crypto-config/org2.example.com/users/Admin@org2.example.com/msp"
-                }
-            }
-        },
         "org0": {
             "name": "org0",
             "mspid": "Org0MSP",
@@ -32,10 +9,11 @@
                     "host": "ca.org0.example.com",
                     "port": 7054
                 },
-                "tlsOptions": {
-                    "trustedRoots": ["/var/hyperledger/www/config/crypto-config/org0.example.com/trusted-roots/ca-cert.pem"],
-                    "verify": true
-                },
+                "trusted_root_paths": [
+                    "/var/hyperledger/www/config/crypto-config/org0.example.com/trusted-roots/ca-cert.pem"
+                ],
+                "__WARNING": "I wasn't able to get specification of trusted roots to work; nodejs TLS connection doesn't seem to properly handle the certs (or it's a configuration problem in fabric-ca-cryptogen.sh).  Specifying rejectUnauthorized:false disables the check that the TLS server's cert is signed by a trusted authority, but still uses TLS to encrypt the connection.",
+                "rejectUnauthorized": false,
                 "caname": null
             },
             "orderers": {
@@ -88,10 +66,11 @@
                     "host": "ca.org1.example.com",
                     "port": 7054
                 },
-                "tlsOptions": {
-                    "trustedRoots": ["/var/hyperledger/www/config/crypto-config/org1.example.com/trusted-roots/ca-cert.pem"],
-                    "verify": true
-                },
+                "trusted_root_paths": [
+                    "/var/hyperledger/www/config/crypto-config/org1.example.com/trusted-roots/ca-cert.pem"
+                ],
+                "__WARNING": "I wasn't able to get specification of trusted roots to work; nodejs TLS connection doesn't seem to properly handle the certs (or it's a configuration problem in fabric-ca-cryptogen.sh).  Specifying rejectUnauthorized:false disables the check that the TLS server's cert is signed by a trusted authority, but still uses TLS to encrypt the connection.",
+                "rejectUnauthorized": false,
                 "caname": null
             },
             "orderers": {
@@ -132,6 +111,29 @@
                 },
                 "User1": {
                     "msp_path": "/var/hyperledger/www/config/crypto-config/org1.example.com/users/User1@org1.example.com/msp"
+                }
+            }
+        },
+        "org2": {
+            "name": "org2",
+            "mspid": "Org2MSP",
+            "ca": null,
+            "orderers": {
+                "orderer.org2.example.com": {
+                    "remote": {
+                        "base_protocol": "grpc",
+                        "host": "orderer.org2.example.com",
+                        "port": 7050
+                    },
+                    "ssl_target_name_override": "orderer.org2.example.com",
+                    "orderer_tls_cacert_path": "/var/hyperledger/www/config/crypto-config/org2.example.com/trusted-roots/ca-cert.pem"
+                }
+            },
+            "peers": {
+            },
+            "users": {
+                "Admin": {
+                    "msp_path": "/var/hyperledger/www/config/crypto-config/org2.example.com/users/Admin@org2.example.com/msp"
                 }
             }
         }

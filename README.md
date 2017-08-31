@@ -244,9 +244,14 @@ easier.
     In particular:
     -   GENERAL_LOGGING_LEVEL controls how verbose the logging for each service is.
     -   TLS_ENABLED controls if TLS communication between each service is enabled.
+-   __WARNING__: I have not been able to get the trustedRoots option for the TLS connection to the CA to work; thus
+    I have set `"rejectUnauthorized":false` in `netcfg.json` to disable the check that the TLS server's cert is signed
+    by a trusted CA.  The connection is still encrypted via TLS, but as is, it is vulnerable to man-in-the-middle attacks.
 
 ## To-Dos
 
+-   Get the trustedRoots verification working for TLS connection to CA.  As noted in Random Notes, it is currently
+    disabled, and therefore is vulnerable to man-in-the-middle attacks.
 -   Use the fabric-ca-server-config.yaml files for ca.orgN.example.com in fabric-ca-cryptogen.sh so that the CAs can
     be custom configured.
 -   Verify that the state is preserved correctly between calls, and that the web server correctly handles existing

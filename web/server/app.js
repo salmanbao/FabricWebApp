@@ -176,16 +176,47 @@ function query (invoking_user_org_name, fcn, req_query_arg_names, req, res, comp
 // This defines a service endpoint on the server to which HTTP POST requests will be made,
 // ( e.g. localhost:3000/create_account?invoking_user_name=Admin&account_name=Bob&initial_balance=123 ).
 app.post('/create_account', function(req, res){
-    // invoking_user_name is a required argument implicitly; this will be replaced if/when user sessions
-    // are added to the web client/server.
-    invoke('org0', 'create_account', ['account_name', 'initial_balance'], req, res);
+    // TODO: Check if the account already exists (via enrollment)
+
+    // TODO: throw error if the req.query lookups fail
+    const account_name = req.query['account_name'];
+    // NOTE: org1.department1 is a dummy -- affiliations haven't been configured correctly yet, still using defaults from CA.
+    simple_client.register_and_enroll_user_in_org__p(account_name, undefined, 'user', 'org1.department1', 'org0', 'admin')
+    .then(user => {
+        // invoking_user_name is a required argument implicitly; this will be replaced if/when user sessions
+        // are added to the web client/server.
+        invoke('org0', 'create_account', ['account_name', 'initial_balance'], req, res);
+    })
+    .catch(err => {
+        const response = JSON.stringify({'message':err});
+        console.log('ERROR response: "%s"', response);
+        res.status(500); // this code is "internal server error", which is fine for now.
+        res.write(response);
+        res.end();
+    });
 });
 
-app.post('/delete_account', function(req, res){
-    // invoking_user_name is a required argument implicitly; this will be replaced if/when user sessions
-    // are added to the web client/server.
-    invoke('org0', 'delete_account', ['account_name'], req, res);
-});
+// NOTE: delete_account is temporarily disabled until a well-defined schema for revoking enrollment
+// and updating the relevant user context, etc.
+// app.post('/delete_account', function(req, res){
+//     // TODO: Check if the account already exists (via enrollment)
+//
+//     // TODO: throw error if the req.query lookups fail
+//     const account_name = req.query['account_name'];
+//     simple_client.revoke_enrollment_for_user_in_org__p(account_name, 'org0', 'deletion of account', 'admin')
+//     .then(result => {
+//         // invoking_user_name is a required argument implicitly; this will be replaced if/when user sessions
+//         // are added to the web client/server.
+//         invoke('org0', 'delete_account', ['account_name'], req, res);
+//     })
+//     .catch(err => {
+//         const response = JSON.stringify({'message':err});
+//         console.log('ERROR response: "%s"', response);
+//         res.status(500); // this code is "internal server error", which is fine for now.
+//         res.write(response);
+//         res.end();
+//     });
+// });
 
 app.post('/transfer', function(req, res){
     // invoking_user_name is a required argument implicitly; this will be replaced if/when user sessions
@@ -197,6 +228,12 @@ app.get('/query_balance', function(req, res){
     // invoking_user_name is a required argument implicitly; this will be replaced if/when user sessions
     // are added to the web client/server.
     query('org0', 'query_balance', ['account_name'], req, res);
+});
+
+app.get('/query_account_names', function(req, res){
+    // invoking_user_name is a required argument implicitly; this will be replaced if/when user sessions
+    // are added to the web client/server.
+    query('org0', 'query_account_names', [], req, res);
 });
 
 const SERVER_PORT = process.env.SERVER_PORT === undefined ? 3000 : process.env.SERVER_PORT;
@@ -238,6 +275,12 @@ Promise.resolve()
     // This wait appears to be necessary -- is there some event that must be listened for
     // in order to wait for install/instantiate to complete?  Why doesn't it do that already?
     return sleep__p(5000)
+})
+.then(() => {
+    return Promise.all([
+        simple_client.enroll_user_in_org__p('admin', 'adminpw', 'org0'),
+        simple_client.enroll_user_in_org__p('admin', 'adminpw', 'org1')
+    ]);
 })
 .then(results => {
     server = app.listen(SERVER_PORT, function () {
