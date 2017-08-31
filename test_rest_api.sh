@@ -7,6 +7,7 @@ set -e
 TEMP_DIR=test_rest_api_temporary_files
 ACTUAL_OUTPUT=${TEMP_DIR}/actual
 EXPECTED_OUTPUT=${TEMP_DIR}/expected
+PROTOCOL=http
 
 rm ${TEMP_DIR} -rf
 mkdir -p ${TEMP_DIR}
@@ -36,6 +37,7 @@ function post_and_check_results {
     set_expected_output "${output}"
     post "${url}"
     check_results
+    echo -e "\n\n\n"
 }
 
 function get_and_check_results {
@@ -46,39 +48,29 @@ function get_and_check_results {
     check_results
 }
 
-post_and_check_results "http://localhost:3000/create_account?account_name=bob&initial_balance=123" '{"status":"VALID"}'
+# TODO: Make a more complete sequence of tests, testing all transactions, transaction permissions checks, and transaction errors.
 
-get_and_check_results "http://localhost:3000/query_balance?account_name=bob" '123'
+get_and_check_results "${PROTOCOL}://localhost:3000/query_balance?invoking_user_name=Admin&account_name=Alice" '{"message":"channel.sendTransactionProposal failed; error(s): chaincode error (status: 500, message: Could not query_balance for account \"Alice\"; error was Could not retrieve account named \"Alice\"; error was GetTableRow failed because row with keys [Alice] does not exist); chaincode error (status: 500, message: Could not query_balance for account \"Alice\"; error was Could not retrieve account named \"Alice\"; error was GetTableRow failed because row with keys [Alice] does not exist); "}'
 
-post_and_check_results "http://localhost:3000/create_account?account_name=alice&initial_balance=456" '{"status":"VALID"}'
+get_and_check_results "${PROTOCOL}://localhost:3000/query_balance?invoking_user_name=Admin&account_name=Bob" '{"message":"channel.sendTransactionProposal failed; error(s): chaincode error (status: 500, message: Could not query_balance for account \"Bob\"; error was Could not retrieve account named \"Bob\"; error was GetTableRow failed because row with keys [Bob] does not exist); chaincode error (status: 500, message: Could not query_balance for account \"Bob\"; error was Could not retrieve account named \"Bob\"; error was GetTableRow failed because row with keys [Bob] does not exist); "}'
 
-get_and_check_results "http://localhost:3000/query_balance?account_name=alice" '456'
+post_and_check_results "${PROTOCOL}://localhost:3000/create_account?invoking_user_name=Admin&account_name=Bob&initial_balance=123" '{"status":"VALID"}'
 
-post_and_check_results "http://localhost:3000/create_account?account_name=alice&initial_balance=789" '{"message":"channel.sendTransactionProposal failed; error(s): chaincode error (status: 500, message: Could not create account named \"alice\"; account already exists); chaincode error (status: 500, message: Could not create account named \"alice\"; account already exists); "}'
+get_and_check_results "${PROTOCOL}://localhost:3000/query_balance?invoking_user_name=Admin&account_name=Bob" '{"Name":"Bob","Balance":123}'
 
-get_and_check_results "http://localhost:3000/query_balance?account_name=alice" '456'
+post_and_check_results "${PROTOCOL}://localhost:3000/create_account?invoking_user_name=Admin&account_name=Alice&initial_balance=456" '{"status":"VALID"}'
 
-post_and_check_results "http://localhost:3000/transfer?from_account_name=alice&to_account_name=bob&amount=400" '{"status":"VALID"}'
+get_and_check_results "${PROTOCOL}://localhost:3000/query_balance?invoking_user_name=Admin&account_name=Alice" '{"Name":"Alice","Balance":456}'
 
-get_and_check_results "http://localhost:3000/query_balance?account_name=alice" '56'
+post_and_check_results "${PROTOCOL}://localhost:3000/create_account?invoking_user_name=Admin&account_name=Alice&initial_balance=789" '{"message":"Error registering or enrolling \"Alice\""}'
 
-get_and_check_results "http://localhost:3000/query_balance?account_name=bob" '523'
+get_and_check_results "${PROTOCOL}://localhost:3000/query_balance?invoking_user_name=Admin&account_name=Alice" '{"Name":"Alice","Balance":456}'
 
-post_and_check_results "http://localhost:3000/delete_account?account_name=bob" '{"status":"VALID"}'
+post_and_check_results "${PROTOCOL}://localhost:3000/transfer?invoking_user_name=Admin&from_account_name=Alice&to_account_name=Bob&amount=400" '{"status":"VALID"}'
 
-get_and_check_results "http://localhost:3000/query_balance?account_name=bob" '{"message":"channel.sendTransactionProposal failed; error(s): chaincode error (status: 500, message: {\"Error\":\"Account named \"bob\" does not exist\"}); chaincode error (status: 500, message: {\"Error\":\"Account named \"bob\" does not exist\"}); "}'
+get_and_check_results "${PROTOCOL}://localhost:3000/query_balance?invoking_user_name=Admin&account_name=Alice" '{"Name":"Alice","Balance":56}'
 
-post_and_check_results "http://localhost:3000/transfer?from_account_name=alice&to_account_name=bob&amount=50" '{"message":"channel.sendTransactionProposal failed; error(s): chaincode error (status: 500, message: Entity not found); chaincode error (status: 500, message: Entity not found); "}'
-
-post_and_check_results "http://localhost:3000/create_account?account_name=bob&initial_balance=789" '{"status":"VALID"}'
-
-get_and_check_results "http://localhost:3000/query_balance?account_name=bob" '789'
-
-post_and_check_results "http://localhost:3000/transfer?from_account_name=alice&to_account_name=bob&amount=50" '{"status":"VALID"}'
-
-get_and_check_results "http://localhost:3000/query_balance?account_name=alice" '6'
-
-get_and_check_results "http://localhost:3000/query_balance?account_name=bob" '839'
+get_and_check_results "${PROTOCOL}://localhost:3000/query_balance?invoking_user_name=Admin&account_name=Bob" '{"Name":"Bob","Balance":523}'
 
 rm ${TEMP_DIR} -rf
 

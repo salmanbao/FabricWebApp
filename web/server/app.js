@@ -188,7 +188,8 @@ app.post('/create_account', function(req, res){
         invoke('org0', 'create_account', ['account_name', 'initial_balance'], req, res);
     })
     .catch(err => {
-        const response = JSON.stringify({'message':err});
+        // For some reason, err is empty if the user is already registered, so just make up an error message.
+        const response = JSON.stringify({'message':'Error registering or enrolling "'+account_name+'"'});
         console.log('ERROR response: "%s"', response);
         res.status(500); // this code is "internal server error", which is fine for now.
         res.write(response);
@@ -284,7 +285,7 @@ Promise.resolve()
 })
 .then(results => {
     server = app.listen(SERVER_PORT, function () {
-        console.log('server listening at address %s:%s', server.address().address, server.address().port);
+        console.log('server listening at http://%s:%s', server.address().address, server.address().port);
     });
 })
 .catch(err => {

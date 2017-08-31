@@ -45,13 +45,34 @@ Finally, as a repeatable step, bring up the application services using the follo
 
     make up
 
-The web app (in `web/server/SimpleApp.js`) will automatically read the application and network configuration files
+The web app (in `web/server/app.js`) will automatically read the application and network configuration files
 (`web/server/appcfg.json` and `web/server/netcfg.json` respectively), create necessary keystores, enroll all users
 defined in `netcfg.json`, create all channels defined in `appcfg.json`, send participating organizations invitation
-to join the respective channels, and install/instantiate chaincode on the peers of each channel.
+to join the respective channels, install/instantiate chaincode on the peers of each channel, and finally offer
+a REST API and a simple web client on `http://localhost:3000`.  Point your web browser to this address to use
+the web client.
 
 Docker-compose is set to abort upon container exit, so if there's a problem, it will exit with a nonzero return
 code, and the logs for the relevant services can be viewed.
+
+## Web Client
+
+The web client simply presents UI elements for invoking all the different available transactions on behalf of the
+specified user ("Invoking User Name").  The event log is displayed on the right and shows the results of all
+transactions.
+
+The name of the privileged user is `Admin` -- this user can invoke any transaction, and only this user can invoke
+`create_account` and `query_account_names`.  In order to invoke transactions as other users, the `create_account`
+transaction must be successfully invoked by `Admin`.  For example,
+
+    Invoking User Name: Admin
+    Account Name:       Alice
+    Initial Balance:    123
+    Create Account (click the button)
+
+After success, the user `Alice` can then be used as "Invoking User Name" to attempt to invoke transactions.
+Certain transactions have certain constraints (e.g only `Admin` or the account owner can transfer an amount
+out of an account).
 
 ## Structure Of Project
 
@@ -237,6 +258,13 @@ easier.
     will delete all non-source resources that this project created and currently still exist.  This should
     reset the project back to its original state with no leftover persistent data.  So be careful, because
     this will also delete your blockchain state and web server keystore.
+
+## Testing
+
+There is a simple shell script based test that can be run against the web server.  Bring the services up
+(see above documentation on how), and then in a separate console, run `./test_rest_api.sh`.  It should
+make several transactions and check their responses.  The script will succeed only if the responses were
+as expected.  The test script must be run against a "fresh" server.
 
 ## Random Notes
 
